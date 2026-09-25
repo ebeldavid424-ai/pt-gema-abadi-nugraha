@@ -64,10 +64,10 @@ export default function App() {
   // Auth & Profile
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    uid: 'guest',
-    email: 'ebeldavid424@gmail.com',
-    displayName: 'David Ebel (Owner)',
-    role: 'OWNER',
+    uid: '',
+    email: '',
+    displayName: '',
+    role: 'OPERATOR',
   });
   const [driveConnected, setDriveConnected] = useState<boolean>(false);
 
@@ -81,46 +81,18 @@ export default function App() {
 
   // Firestore Real-time Collections Data with initial reliable defaults
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [units, setUnits] = useState<BusinessUnit[]>([
-    { id: 'bengkel', name: 'Bengkel', code: 'BKL', description: 'Unit Servis, Perbaikan & Perbengkelan', isActive: true, isSystem: true },
-    { id: 'konstruksi', name: 'Konstruksi', code: 'KNS', description: 'Unit Jasa Konstruksi & Proyek Sipil', isActive: true, isSystem: true },
-    { id: 'toko_material', name: 'Toko / Material', code: 'MTR', description: 'Unit Penjualan & Pengadaan Bahan Bangunan/Material', isActive: true, isSystem: true },
-    { id: 'lainnya', name: 'Usaha Lainnya', code: 'LNY', description: 'Unit Usaha & Jasa Tambahan', isActive: true, isSystem: true },
-    { id: 'umum', name: 'Umum / Kantor', code: 'UMM', description: 'Operasional Kantor Pusat & Manajemen', isActive: true, isSystem: true },
-  ]);
-  const [accounts, setAccounts] = useState<Account[]>([
-    { id: 'kas_utama', name: 'Kas Tunai Utama', type: 'CASH', accountNumber: '-', initialBalance: 0, isActive: true },
-    { id: 'bank_bca', name: 'Bank BCA Operasional', type: 'BANK', accountNumber: '8830192831', initialBalance: 0, isActive: true },
-    { id: 'bank_mandiri', name: 'Bank Mandiri Proyek', type: 'BANK', accountNumber: '137001928374', initialBalance: 0, isActive: true },
-  ]);
+  const [units, setUnits] = useState<BusinessUnit[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([
-    { id: 'cat_1_gaji', name: 'Gaji', isActive: true },
-    { id: 'cat_2_transport', name: 'Transport', isActive: true },
-    { id: 'cat_3_listrik', name: 'Listrik', isActive: true },
-    { id: 'cat_4_bensin', name: 'Bensin', isActive: true },
-    { id: 'cat_5_servis', name: 'Servis', isActive: true },
-    { id: 'cat_6_sewa', name: 'Sewa', isActive: true },
-    { id: 'cat_7_material', name: 'Material', isActive: true },
-    { id: 'cat_8_peralatan', name: 'Peralatan', isActive: true },
-    { id: 'cat_9_administrasi', name: 'Administrasi', isActive: true },
-    { id: 'cat_10_pajak', name: 'Pajak', isActive: true },
-    { id: 'cat_11_internet', name: 'Internet', isActive: true },
-    { id: 'cat_12_biaya_proyek', name: 'Biaya Proyek', isActive: true },
-    { id: 'cat_13_biaya_bengkel', name: 'Biaya Bengkel', isActive: true },
-    { id: 'cat_14_biaya_lain', name: 'Biaya Lain', isActive: true },
-  ]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
     name: 'PT. GEMA ABADI NUGRAHA',
-    address: 'Jl. Raya Industri No. 88, Kawasan Usaha Terpadu',
-    phone: '0812-3456-7890',
-    email: 'keuangan@gemaabadi.co.id',
-    taxId: '01.234.567.8-901.000',
-    receiptHeader: 'BUKTI PENERIMAAN KAS RESMI',
-    receiptFooter: 'Terima kasih atas kerja sama dan kepercayaan Anda kepada PT. Gema Abadi Nugraha.',
+    address: '',
+    phone: '',
+    email: '',
   });
 
   // Modal States
@@ -134,7 +106,7 @@ export default function App() {
   // 1. Initial Connection Test & Bootstrapping
   useEffect(() => {
     testConnection();
-    initializeSystemConfiguration();
+    // System configuration is initialized only after authentication succeeds.
 
     // Check online/offline listeners
     const handleOnline = () => setSyncStatus('synced');
@@ -171,6 +143,11 @@ export default function App() {
 
   // 3. Real-Time Subscriptions to Firestore
   useEffect(() => {
+    if (!currentUser) {
+      setSyncStatus('offline');
+      return;
+    }
+
     setSyncStatus('syncing');
 
     const unsubTrx = subscribeToTransactions((data) => {
@@ -221,7 +198,7 @@ export default function App() {
       unsubLogs();
       unsubCompany();
     };
-  }, []);
+  }, [currentUser]);
 
   // Handle Google Drive Connection via OAuth Popup
   const handleConnectDrive = async () => {
