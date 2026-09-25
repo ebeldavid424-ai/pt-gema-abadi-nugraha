@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Receipt,
   CreditCard,
@@ -50,7 +50,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   } | null>(null);
 
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentAccountId, setPaymentAccountId] = useState<string>(accounts[0]?.id || '');
+  const [paymentAccountId, setPaymentAccountId] = useState<string>('');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -59,6 +59,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
   // WhatsApp Billing Reminder State
   const [waReminderItem, setWaReminderItem] = useState<ReceivableItem | null>(null);
   const [targetPhone, setTargetPhone] = useState<string>('');
+
+  useEffect(() => {
+    if (accounts.length > 0 && !paymentAccountId) setPaymentAccountId(accounts[0].id);
+  }, [accounts, paymentAccountId]);
 
   const activeTrx = transactions.filter((t) => t.status === 'ACTIVE');
   const receivables = calculateReceivables(activeTrx);
@@ -156,13 +160,18 @@ export const BillingView: React.FC<BillingViewProps> = ({
         referenceTrxId: payingItem.item.id,
         ...(paymentNotes && paymentNotes.trim() ? { notes: paymentNotes.trim() } : {}),
         status: 'ACTIVE',
-        createdBy: currentEmail || userProfile.email || 'user',
+        createdBy: currentEmail || userProfile.email,
         createdByName: userProfile.displayName || userProfile.role,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      await createAtomicTransaction(paymentTrx, currentEmail || userProfile.email);
+      const actorEmail = currentEmail || userProfile.email;
+      if (!actorEmail) {
+        throw new Error('Email pengguna belum tersedia. Silakan login ulang.');
+      }
+      paymentTrx.createdBy = actorEmail;
+      await createAtomicTransaction(paymentTrx, actorEmail);
       setPayingItem(null);
     } catch (err: any) {
       setPaymentError(err.message || 'Gagal memproses pembayaran');
@@ -412,8 +421,10 @@ export const BillingView: React.FC<BillingViewProps> = ({
                 <select
                   value={paymentAccountId}
                   onChange={(e) => setPaymentAccountId(e.target.value)}
+                  required
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs"
                 >
+                  <option value="">-- Pilih Akun Kas/Bank --</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
