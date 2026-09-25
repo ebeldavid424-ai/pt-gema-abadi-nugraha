@@ -425,7 +425,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs"
                 >
                   <option value="">-- Pilih Akun Kas/Bank --</option>
-                  {accounts.map((a) => (
+                  {accounts.filter((a) => a.isActive).map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
                     </option>
