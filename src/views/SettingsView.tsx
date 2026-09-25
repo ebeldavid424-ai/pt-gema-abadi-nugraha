@@ -16,8 +16,7 @@ import {
   BusinessUnit,
   Account,
   ExpenseCategory,
-  UserProfile,
-  UserRole
+  UserProfile
 } from '../types';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -29,7 +28,6 @@ interface SettingsViewProps {
   accounts: Account[];
   expenseCategories: ExpenseCategory[];
   userProfile: UserProfile;
-  onChangeRole: (role: UserRole) => void;
   driveConnected: boolean;
   onConnectDrive: () => Promise<void>;
 }
@@ -40,7 +38,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   accounts,
   expenseCategories,
   userProfile,
-  onChangeRole,
   driveConnected,
   onConnectDrive,
 }) => {
