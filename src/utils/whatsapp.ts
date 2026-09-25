@@ -80,9 +80,9 @@ Kepada Yth. : ${trx.partyName}
 
 Status Pembayaran: ${trx.paymentMethod === 'CREDIT' ? `BON / KREDIT (Jatuh Tempo: ${trx.dueDate || 'Sesuai Kesepakatan'})` : 'LUNAS (TUNAI / TRANSFER)'}
 
-*Rekening Resmi Perusahaan:*
-• Bank BCA: 8830192831 a.n PT Gema Abadi Nugraha
-• Bank Mandiri: 137001928374 a.n PT Gema Abadi Nugraha
+*Pembayaran:*
+Gunakan rekening resmi perusahaan yang tercantum pada invoice atau keterangan transaksi.
+Kontak: ${company.phone || company.email || '-'}
 ━━━━━━━━━━━━━━━━━━━━
 Mohon kirimkan bukti transfer jika pembayaran dilakukan via bank. Terima kasih.`;
 }
@@ -113,9 +113,9 @@ Berikut adalah informasi tagihan yang tercatat pada sistem kami:
 • *Sisa Tagihan : ${formatRupiah(remainingAmount)}*
 • Jatuh Tempo   : ${dueDate || 'Segera'}
 
-*Rekening Pembayaran:*
-• Bank BCA: 8830192831 a.n PT Gema Abadi Nugraha
-• Bank Mandiri: 137001928374 a.n PT Gema Abadi Nugraha
+*Pembayaran:*
+Gunakan rekening resmi perusahaan yang tercantum pada invoice atau keterangan transaksi.
+Kontak: ${company.phone || company.email || '-'}
 
 Mohon untuk melakukan konfirmasi apabila pembayaran telah dilakukan. Terima kasih atas kerja sama dan kepercayaannya.
 ━━━━━━━━━━━━━━━━━━━━

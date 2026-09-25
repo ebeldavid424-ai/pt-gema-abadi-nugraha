@@ -56,7 +56,7 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
 
   const [type, setType] = useState<TransactionType>('SALE');
   const [date, setDate] = useState<string>(todayStr);
-  const [unitId, setUnitId] = useState<string>(units[0]?.id || 'bengkel');
+  const [unitId, setUnitId] = useState<string>(units[0]?.id || '');
   const [partyName, setPartyName] = useState<string>('');
   const [partyType, setPartyType] = useState<string>('PELANGGAN');
   const [itemName, setItemName] = useState<string>('');
@@ -65,7 +65,7 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
-  const [accountId, setAccountId] = useState<string>(accounts[0]?.id || 'kas_utama');
+  const [accountId, setAccountId] = useState<string>(accounts[0]?.id || '');
   const [destinationAccountId, setDestinationAccountId] = useState<string>(accounts[1]?.id || '');
   const [dueDate, setDueDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -95,7 +95,14 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
     } else if (t === 'DEBT_PAYMENT') {
       setPartyType('SUPPLIER');
       setPaymentMethod('CASH');
+    } else if (t === 'TRANSFER') {
+      setPartyType('LAINNYA');
+      setPaymentMethod('TRANSFER');
     }
+    setItemCategory('');
+    setDueDate('');
+    setTotalAmount(0);
+    setUnitPrice(0);
   };
 
   const handleQtyChange = (val: number) => {
@@ -133,6 +140,30 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
 
     if (totalAmount <= 0) {
       setErrorMessage('Nominal transaksi harus lebih dari 0.');
+      return;
+    }
+    if (!unitId) {
+      setErrorMessage('Unit Usaha wajib dipilih.');
+      return;
+    }
+    if (type !== 'TRANSFER' && type !== 'RECEIVABLE_PAYMENT' && type !== 'DEBT_PAYMENT' && !itemName.trim()) {
+      setErrorMessage('Uraian transaksi wajib diisi.');
+      return;
+    }
+    if ((type === 'SALE' || type === 'PURCHASE' || type === 'EXPENSE') && !itemCategory.trim()) {
+      setErrorMessage('Kategori transaksi wajib dipilih.');
+      return;
+    }
+    if (paymentMethod !== 'CREDIT' && !accountId) {
+      setErrorMessage('Akun Kas/Bank wajib dipilih.');
+      return;
+    }
+    if (paymentMethod === 'CREDIT' && !dueDate) {
+      setErrorMessage('Jatuh tempo wajib diisi untuk transaksi kredit.');
+      return;
+    }
+    if (type === 'TRANSFER' && (!accountId || !destinationAccountId || accountId === destinationAccountId)) {
+      setErrorMessage('Akun asal dan tujuan transfer wajib dipilih dan harus berbeda.');
       return;
     }
 

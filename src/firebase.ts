@@ -9,10 +9,9 @@ import {
 } from 'firebase/auth';
 import {
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager,
-  doc,
-  getDocFromServer
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -20,15 +19,23 @@ import firebaseConfig from '../firebase-applet-config.json';
 export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore directly as specified by Firebase Skill
-export const db = initializeFirestore(
-  app,
-  {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  },
-  (firebaseConfig as any).firestoreDatabaseId
-);
+export const db = (() => {
+  const databaseId = (firebaseConfig as any).firestoreDatabaseId;
+  try {
+    return initializeFirestore(
+      app,
+      {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      },
+      databaseId
+    );
+  } catch (error) {
+    console.warn('Firestore offline cache unavailable; using standard Firestore client.', error);
+    return getFirestore(app, databaseId);
+  }
+})();
 export const auth = getAuth(app);
 
 // Configure Google Provider with Drive Scope
