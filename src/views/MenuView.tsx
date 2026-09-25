@@ -223,7 +223,12 @@ export const MenuView: React.FC<MenuViewProps> = ({
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Menu Utama</span>
         </button>
-        <ImportExportView userEmail={userEmail} transactionsCount={transactions.length} />
+        <ImportExportView
+          userEmail={userEmail}
+          transactionsCount={transactions.length}
+          units={units}
+          accounts={accounts}
+        />
       </div>
     );
   }
