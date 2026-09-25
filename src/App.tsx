@@ -163,6 +163,15 @@ export default function App() {
     return () => unsubAuth();
   }, []);
 
+  useEffect(() => {
+    if (
+      selectedUnitId !== 'all' &&
+      !units.some((u) => u.id === selectedUnitId && u.isActive)
+    ) {
+      setSelectedUnitId('all');
+    }
+  }, [units, selectedUnitId]);
+
   // 3. Real-Time Subscriptions to Firestore
   useEffect(() => {
     if (!currentUser) {
