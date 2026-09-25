@@ -24,6 +24,17 @@ service cloud.firestore {
       return isSignedIn() && (isOwner() || getUserRole() in roles);
     }
 
+    function validPartnerWrite() {
+      return request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.entityType in ['PERUSAHAAN', 'PERORANGAN', 'ORGANISASI']
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() > 0
+        && request.resource.data.relations is list
+        && request.resource.data.relations.size() > 0
+        && request.resource.data.status in ['AKTIF', 'NONAKTIF'];
+    }
+
     function validTransactionCreate() {
       return request.resource.data.keys().hasAll([
         'trxNumber',
@@ -116,7 +127,9 @@ service cloud.firestore {
 
     match /partners/{partnerId} {
       allow read: if isSignedIn();
-      allow write: if isRole(['OWNER','ADMIN','SALES','KASIR','AKUNTAN']);
+      allow create: if isRole(['OWNER','ADMIN','SALES','KASIR','AKUNTAN']) && validPartnerWrite();
+      allow update: if isRole(['OWNER','ADMIN','SALES','KASIR','AKUNTAN']) && validPartnerWrite();
+      allow delete: if isRole(['OWNER','ADMIN']);
     }
 
     match /accounts/{accountId} {
