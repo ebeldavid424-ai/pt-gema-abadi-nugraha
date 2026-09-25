@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Package,
   Plus,
@@ -34,11 +34,18 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   // Form State
   const [name, setName] = useState<string>('');
   const [type, setType] = useState<'BARANG' | 'JASA'>('BARANG');
-  const [unitId, setUnitId] = useState<string>(units[0]?.id || 'bengkel');
+  const [unitId, setUnitId] = useState<string>('');
   const [defaultPrice, setDefaultPrice] = useState<number>(0);
   const [unitOfMeasure, setUnitOfMeasure] = useState<string>('Pcs');
   const [stock, setStock] = useState<number>(0);
   const [productError, setProductError] = useState<string | null>(null);
+
+  // Units load asynchronously from Firestore; never use a fabricated fallback unit.
+  useEffect(() => {
+    if (units.length > 0 && !unitId) {
+      setUnitId(units[0].id);
+    }
+  }, [units, unitId]);
 
   const unitMap: Record<string, string> = {};
   units.forEach((u) => {
@@ -55,6 +62,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!unitId) {
+      setProductError('Unit Usaha wajib dipilih.');
+      return;
+    }
     setProductError(null);
 
     try {
@@ -238,8 +249,10 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   <select
                     value={unitId}
                     onChange={(e) => setUnitId(e.target.value)}
+                    required
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs"
                   >
+                    <option value="">Pilih Unit Usaha</option>
                     {units.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.name}
