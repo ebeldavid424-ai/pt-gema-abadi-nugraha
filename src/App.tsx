@@ -11,7 +11,6 @@ import {
   getAccessToken,
   setCachedAccessToken,
   googleSignIn,
-  db
 } from './firebase';
 import {
   Transaction,
@@ -267,7 +266,6 @@ export default function App() {
         syncStatus={syncStatus}
         currentUser={currentUser}
         userProfile={userProfile}
-        onChangeRole={handleRoleChange}
         driveConnected={driveConnected}
         onConnectDrive={handleConnectDrive}
       />
