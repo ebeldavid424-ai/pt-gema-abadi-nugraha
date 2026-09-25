@@ -46,6 +46,45 @@ export function generateTrxNumber(type: string, dateStr: string, existingCount: 
   return `${prefix}-${cleanDate}-${seq}`;
 }
 
+const OWNER_EMAIL = 'ebeldavid424@gmail.com';
+
+/**
+ * Load an authenticated user's profile or create a safe default profile.
+ * Only the configured owner email receives OWNER on first creation; all other
+ * first-time users start as OPERATOR and must be promoted by an owner.
+ */
+export async function ensureUserProfile(
+  uid: string,
+  email: string,
+  displayName: string
+): Promise<UserProfile> {
+  if (!uid || !email) throw new Error('Identitas pengguna belum lengkap.');
+
+  const ref = doc(db, 'userProfiles', uid);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    const data = snap.data() as UserProfile;
+    return {
+      uid,
+      email: data.email || email,
+      displayName: data.displayName || displayName || email.split('@')[0],
+      role: data.role || 'OPERATOR',
+      assignedUnitId: data.assignedUnitId,
+    };
+  }
+
+  const profile: UserProfile = {
+    uid,
+    email,
+    displayName: displayName || email.split('@')[0],
+    role: email.toLowerCase() === OWNER_EMAIL.toLowerCase() ? 'OWNER' : 'OPERATOR',
+  };
+
+  await setDoc(ref, cleanFirestoreData(profile));
+  return profile;
+}
+
 /**
  * Bootstrap required system configuration only if not present
  */
@@ -64,12 +103,9 @@ export async function initializeSystemConfiguration(): Promise<void> {
       if (!companySnap.exists()) {
         const defaultCompany: CompanyProfile = {
           name: 'PT. GEMA ABADI NUGRAHA',
-          address: 'Jl. Raya Industri No. 88, Kawasan Usaha Terpadu',
-          phone: '0812-3456-7890',
-          email: 'keuangan@gemaabadi.co.id',
-          taxId: '01.234.567.8-901.000',
-          receiptHeader: 'BUKTI PEMBAYARAN & PENERIMAAN KAS RESMI',
-          receiptFooter: 'Terima kasih atas kerja sama dan kepercayaan Anda kepada PT. Gema Abadi Nugraha.',
+          address: '',
+          phone: '',
+          email: '',
         };
         await setDoc(companyDocRef, cleanFirestoreData(defaultCompany));
       }
@@ -104,9 +140,7 @@ export async function initializeSystemConfiguration(): Promise<void> {
       if (accountsSnap.empty) {
         const batch = writeBatch(db);
         const defaultAccounts: Account[] = [
-          { id: 'kas_utama', name: 'Kas Tunai Utama', type: 'CASH', accountNumber: '-', initialBalance: 0, isActive: true },
-          { id: 'bank_bca', name: 'Bank BCA Operasional', type: 'BANK', accountNumber: '8830192831', initialBalance: 0, isActive: true },
-          { id: 'bank_mandiri', name: 'Bank Mandiri Proyek', type: 'BANK', accountNumber: '137001928374', initialBalance: 0, isActive: true },
+          { id: 'kas_utama', name: 'Kas Tunai Utama', type: 'CASH', initialBalance: 0, isActive: true },
         ];
         defaultAccounts.forEach((acc) => {
           batch.set(doc(db, 'accounts', acc.id), cleanFirestoreData(acc));
@@ -183,7 +217,7 @@ function validateTransactionForCommit(trx: Omit<Transaction, 'id'>): void {
   if (!trx.paymentMethod) {
     throw new Error('Cara bayar wajib dipilih.');
   }
-  if (trx.type === 'SALE' || trx.type === 'PURCHASE') {
+  if (trx.type === 'SALE' || trx.type === 'PURCHASE' || trx.type === 'EXPENSE') {
     if (!trx.itemName?.trim()) throw new Error('Barang/Jasa/Uraian wajib diisi.');
     if (!trx.itemCategory?.trim()) throw new Error('Kategori Barang/Jasa wajib dipilih.');
   }
@@ -213,6 +247,10 @@ export async function createAtomicTransaction(
   trx: Omit<Transaction, 'id'>,
   userEmail: string
 ): Promise<string> {
+  if (!userEmail?.trim()) throw new Error('Email pengguna wajib tersedia untuk menyimpan transaksi.');
+  if (trx.createdBy !== userEmail) {
+    throw new Error('Identitas pembuat transaksi tidak sesuai dengan pengguna aktif.');
+  }
   validateTransactionForCommit(trx);
 
   const trxRef = doc(collection(db, 'transactions'));
