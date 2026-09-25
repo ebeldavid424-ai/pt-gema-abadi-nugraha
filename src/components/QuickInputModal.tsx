@@ -62,7 +62,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   const [type, setType] = useState<TransactionType>(defaultType);
   const [date, setDate] = useState<string>(todayStr);
-  const [unitId, setUnitId] = useState<string>(units[0]?.id || '');
+  const [unitId, setUnitId] = useState<string>('');
   const [partyName, setPartyName] = useState<string>('');
   const [partyType, setPartyType] = useState<string>('PELANGGAN');
   const [itemName, setItemName] = useState<string>('');
@@ -71,8 +71,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
-  const [accountId, setAccountId] = useState<string>(accounts[0]?.id || '');
-  const [destinationAccountId, setDestinationAccountId] = useState<string>(accounts[1]?.id || '');
+  const [accountId, setAccountId] = useState<string>('');
+  const [destinationAccountId, setDestinationAccountId] = useState<string>('');
   const [dueDate, setDueDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
@@ -82,6 +82,15 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (units.length > 0 && !unitId) setUnitId(units[0].id);
+  }, [units, unitId]);
+
+  useEffect(() => {
+    if (accounts.length > 0 && !accountId) setAccountId(accounts[0].id);
+    if (accounts.length > 1 && !destinationAccountId) setDestinationAccountId(accounts[1].id);
+  }, [accounts, accountId, destinationAccountId]);
 
   // Sync default type when opened
   useEffect(() => {
@@ -254,13 +263,18 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         ...(paymentMethod === 'CREDIT' && dueDate ? { dueDate } : {}),
         ...(notes && notes.trim() ? { notes: notes.trim() } : {}),
         status: 'ACTIVE',
-        createdBy: currentEmail || userProfile.email || 'user',
+        createdBy: currentEmail || userProfile.email,
         createdByName: userProfile.displayName || userProfile.role,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      const newTrxId = await createAtomicTransaction(newTrxData, currentEmail || userProfile.email);
+      const actorEmail = currentEmail || userProfile.email;
+      if (!actorEmail) {
+        throw new Error('Email pengguna belum tersedia. Silakan login ulang.');
+      }
+      newTrxData.createdBy = actorEmail;
+      const newTrxId = await createAtomicTransaction(newTrxData, actorEmail);
 
       // Upload Document if selected
       if (selectedFile) {
@@ -630,7 +644,6 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
                 >
                   <option value="" disabled>-- Pilih Akun --</option>
-                  <option value="" disabled>-- Pilih Akun Asal --</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
