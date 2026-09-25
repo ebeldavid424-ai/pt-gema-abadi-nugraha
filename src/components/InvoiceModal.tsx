@@ -67,14 +67,14 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   };
 
   const handleSendWhatsApp = () => {
-    const message = generateInvoiceWAMessage(transaction, companyProfile, invoiceNo);
+    const message = generateInvoiceWAMessage(transaction, companyProfile, invoiceNo, accounts);
     const url = createWhatsAppUrl(targetPhone, message);
     window.open(url, '_blank');
     setShowWhatsAppPrompt(false);
   };
 
   const handleShare = async () => {
-    const message = generateInvoiceWAMessage(transaction, companyProfile, invoiceNo);
+    const message = generateInvoiceWAMessage(transaction, companyProfile, invoiceNo, accounts);
     await shareDocumentOrText(`Faktur Penjualan ${invoiceNo}`, message);
   };
 
