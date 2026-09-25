@@ -10,7 +10,7 @@ import {
   MessageCircle,
   Phone
 } from 'lucide-react';
-import { Transaction, CompanyProfile, Partner } from '../types';
+import { Transaction, CompanyProfile, Partner, Account } from '../types';
 import { formatTerbilang, shareDocumentOrText } from '../engines/documentEngine';
 import { formatRupiah } from '../engines/reportEngine';
 import { createWhatsAppUrl, generateReceiptWAMessage } from '../utils/whatsapp';
@@ -21,6 +21,7 @@ interface ReceiptModalProps {
   transaction: Transaction | null;
   companyProfile: CompanyProfile;
   partners?: Partner[];
+  accounts?: Account[];
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({
@@ -29,6 +30,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   transaction,
   companyProfile,
   partners = [],
+  accounts = [],
 }) => {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
@@ -42,6 +44,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const matchedPartner = partners.find(
     (p) => p.name.toLowerCase() === transaction.partyName.toLowerCase()
   );
+
+  const selectedAccount = accounts.find((a) => a.id === transaction.accountId);
 
   const formattedDate = new Date(transaction.date).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -184,6 +188,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   : transaction.paymentMethod === 'TRANSFER'
                   ? 'Transfer Bank'
                   : 'Bon / Kredit'}
+                {selectedAccount && transaction.paymentMethod !== 'CREDIT' && (
+                  <span className="block text-xs text-slate-500 mt-0.5">
+                    {selectedAccount.name}
+                    {selectedAccount.bankName ? ' • ' + selectedAccount.bankName : ''}
+                    {selectedAccount.accountNumber ? ' • ' + selectedAccount.accountNumber : ''}
+                  </span>
+                )}
               </span>
             </div>
           </div>
