@@ -38,10 +38,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showUnitMenu, setShowUnitMenu] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
+  const activeUnits = units.filter((u) => u.isActive);
+
   const currentUnitName =
     selectedUnitId === 'all'
       ? 'Semua Unit Usaha'
-      : units.find((u) => u.id === selectedUnitId)?.name || 'Unit';
+      : activeUnits.find((u) => u.id === selectedUnitId)?.name || 'Pilih Unit Usaha';
 
   const handleSignIn = async () => {
     try {
@@ -121,7 +123,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>Semua Unit Usaha</span>
                     <span className="text-xs text-slate-400">Konsolidasi</span>
                   </button>
-                  {units.map((u) => (
+                  {activeUnits.map((u) => (
                     <button
                       key={u.id}
                       type="button"
