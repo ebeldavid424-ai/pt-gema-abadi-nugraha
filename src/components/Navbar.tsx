@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Building2,
-  Wifi,
   WifiOff,
   RefreshCw,
   User as UserIcon,
@@ -10,8 +9,8 @@ import {
   ShieldCheck,
   ChevronDown
 } from 'lucide-react';
-import { BusinessUnit, UserRole, UserProfile } from '../types';
-import { googleSignIn, logout, getAccessToken } from '../firebase';
+import { BusinessUnit, UserProfile } from '../types';
+import { googleSignIn, logout } from '../firebase';
 
 interface NavbarProps {
   units: BusinessUnit[];
@@ -20,7 +19,6 @@ interface NavbarProps {
   syncStatus: 'synced' | 'syncing' | 'offline';
   currentUser: any;
   userProfile: UserProfile;
-  onChangeRole: (role: UserRole) => void;
   driveConnected: boolean;
   onConnectDrive: () => Promise<void>;
 }
@@ -32,11 +30,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   syncStatus,
   currentUser,
   userProfile,
-  onChangeRole,
   driveConnected,
   onConnectDrive,
 }) => {
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showUnitMenu, setShowUnitMenu] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
