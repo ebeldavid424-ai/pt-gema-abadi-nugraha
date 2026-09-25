@@ -63,14 +63,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   };
 
   const handleSendWhatsApp = () => {
-    const text = generateReceiptWAMessage(transaction, companyProfile, receiptNo);
+    const text = generateReceiptWAMessage(transaction, companyProfile, receiptNo, accounts);
     const url = createWhatsAppUrl(targetPhone, text);
     window.open(url, '_blank');
     setShowWhatsAppPrompt(false);
   };
 
   const handleShare = async () => {
-    const text = generateReceiptWAMessage(transaction, companyProfile, receiptNo);
+    const text = generateReceiptWAMessage(transaction, companyProfile, receiptNo, accounts);
     await shareDocumentOrText(`Kwitansi ${receiptNo}`, text);
   };
 
