@@ -65,7 +65,9 @@ export interface Account {
   id: string;
   name: string;
   type: 'CASH' | 'BANK' | 'E_WALLET';
+  bankName?: string;
   accountNumber?: string;
+  accountHolder?: string;
   initialBalance: number;
   isActive: boolean;
 }
