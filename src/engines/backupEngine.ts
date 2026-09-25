@@ -3,10 +3,21 @@ import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { uploadFileToGoogleDrive } from './documentEngine';
 import { cleanFirestoreData } from '../utils/cleanData';
-import { Transaction, Partner, Account, BusinessUnit, ExpenseCategory, ProductItem, AuditLog, CompanyProfile, DocumentItem } from '../types';
+import {
+  Transaction,
+  Partner,
+  Account,
+  BusinessUnit,
+  ExpenseCategory,
+  ProductItem,
+  AuditLog,
+  CompanyProfile,
+  DocumentItem,
+} from '../types';
 
 export interface FullBackupData {
   version: string;
+  backupId: string;
   timestamp: string;
   companyProfile?: CompanyProfile;
   transactions: Transaction[];
@@ -15,12 +26,26 @@ export interface FullBackupData {
   accounts: Account[];
   expenseCategories: ExpenseCategory[];
   products: ProductItem[];
-  auditLogs: AuditLog[];
   documents: DocumentItem[];
+  auditLogs: AuditLog[];
+}
+
+const BACKUP_VERSION = '2.0.0';
+
+function makeBackupId(): string {
+  return `backup_${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}_${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
+
+async function commitChunk(batch: ReturnType<typeof writeBatch>, count: number): Promise<void> {
+  if (count > 0) {
+    await batch.commit();
+  }
 }
 
 /**
- * Fetch all Firestore collections to construct a complete backup payload
+ * Fetch all Firestore collections to construct a complete backup payload.
  */
 export async function generateFullBackupPayload(): Promise<FullBackupData> {
   const [
@@ -31,7 +56,8 @@ export async function generateFullBackupPayload(): Promise<FullBackupData> {
     accountsSnap,
     catsSnap,
     prodsSnap,
-    logsSnap
+    docsSnap,
+    logsSnap,
   ] = await Promise.all([
     getDocs(collection(db, 'companyProfile')),
     getDocs(collection(db, 'transactions')),
@@ -40,40 +66,42 @@ export async function generateFullBackupPayload(): Promise<FullBackupData> {
     getDocs(collection(db, 'accounts')),
     getDocs(collection(db, 'expenseCategories')),
     getDocs(collection(db, 'products')),
+    getDocs(collection(db, 'documents')),
     getDocs(collection(db, 'auditLogs')),
   ]);
 
-  const companyProfile = !companySnap.empty ? (companySnap.docs[0].data() as CompanyProfile) : undefined;
-  const transactions = trxSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Transaction));
-  const businessUnits = unitsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as BusinessUnit));
-  const partners = partnersSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Partner));
-  const accounts = accountsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Account));
-  const expenseCategories = catsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as ExpenseCategory));
-  const products = prodsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as ProductItem));
-  const auditLogs = logsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as AuditLog));
+  const companyProfile = !companySnap.empty
+    ? (companySnap.docs.find((d) => d.id === 'main')?.data() as CompanyProfile | undefined) ||
+      (companySnap.docs[0].data() as CompanyProfile)
+    : undefined;
 
   return {
-    version: '1.0.0',
+    version: BACKUP_VERSION,
+    backupId: makeBackupId(),
     timestamp: new Date().toISOString(),
     companyProfile,
-    transactions,
-    businessUnits,
-    partners,
-    accounts,
-    expenseCategories,
-    products,
-    auditLogs,
+    transactions: trxSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Transaction)),
+    businessUnits: unitsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as BusinessUnit)),
+    partners: partnersSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Partner)),
+    accounts: accountsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as Account)),
+    expenseCategories: catsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as ExpenseCategory)),
+    products: prodsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as ProductItem)),
+    documents: docsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as DocumentItem)),
+    auditLogs: logsSnap.docs.map((d) => ({ ...d.data(), id: d.id } as AuditLog)),
   };
 }
 
 /**
- * Download Backup as JSON file
+ * Download Backup as JSON file.
  */
-export function downloadJsonBackup(data: FullBackupData, filenamePrefix: string = 'PT_Gema_Abadi_Backup'): void {
+export function downloadJsonBackup(
+  data: FullBackupData,
+  filenamePrefix: string = 'PT_Gema_Abadi_Backup'
+): void {
   const jsonStr = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const dateStr = new Date().toISOString().split('T')[0];
-  const filename = `${filenamePrefix}_${dateStr}.json`;
+  const filename = `${filenamePrefix}_${dateStr}_${data.backupId}.json`;
 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -86,12 +114,14 @@ export function downloadJsonBackup(data: FullBackupData, filenamePrefix: string 
 }
 
 /**
- * Generate and download multi-sheet Excel (.xlsx) workbook
+ * Generate and download multi-sheet Excel backup.
  */
-export function downloadExcelBackup(data: FullBackupData, filenamePrefix: string = 'Laporan_Keuangan_PT_Gema_Abadi'): void {
+export function downloadExcelBackup(
+  data: FullBackupData,
+  filenamePrefix: string = 'Laporan_Keuangan_PT_Gema_Abadi'
+): void {
   const wb = XLSX.utils.book_new();
 
-  // 1. Sheet Transaksi
   const trxData = data.transactions.map((t) => ({
     'No Transaksi': t.trxNumber,
     Tanggal: t.date,
@@ -99,89 +129,116 @@ export function downloadExcelBackup(data: FullBackupData, filenamePrefix: string
     'Unit Usaha': t.unitId,
     'Pihak / Mitra': t.partyName,
     'Barang / Uraian': t.itemName,
-    Kategori: t.itemCategory || '-',
+    Kategori: t.itemCategory || '',
     Qty: t.qty,
     'Harga Satuan': t.unitPrice,
     Total: t.totalAmount,
     'Metode Bayar': t.paymentMethod,
+    'Akun': t.accountId,
+    'Akun Tujuan': t.destinationAccountId || '',
+    'Jatuh Tempo': t.dueDate || '',
+    Referensi: t.referenceTrxId || '',
     Status: t.status,
-    Keterangan: t.notes || '-',
+    Keterangan: t.notes || '',
   }));
-  const wsTrx = XLSX.utils.json_to_sheet(trxData);
-  XLSX.utils.book_append_sheet(wb, wsTrx, 'Transaksi');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trxData), 'Transaksi');
 
-  // 2. Sheet Kas & Bank
   const accData = data.accounts.map((a) => ({
+    ID: a.id,
     Nama: a.name,
     Tipe: a.type,
-    'No Rekening': a.accountNumber || '-',
+    'No Rekening': a.accountNumber || '',
     'Saldo Awal': a.initialBalance,
     Status: a.isActive ? 'Aktif' : 'Nonaktif',
   }));
-  const wsAcc = XLSX.utils.json_to_sheet(accData);
-  XLSX.utils.book_append_sheet(wb, wsAcc, 'Kas & Bank');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(accData), 'Kas & Bank');
 
-  // 3. Sheet Mitra
   const partnerData = data.partners.map((p) => ({
+    ID: p.id,
     Nama: p.name,
     Tipe: p.type,
-    Telepon: p.phone || '-',
-    Alamat: p.address || '-',
+    Telepon: p.phone || '',
+    Alamat: p.address || '',
     Status: p.status,
+    Catatan: p.notes || '',
   }));
-  const wsPartner = XLSX.utils.json_to_sheet(partnerData);
-  XLSX.utils.book_append_sheet(wb, wsPartner, 'Buku Mitra');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(partnerData), 'Buku Mitra');
 
-  // 4. Sheet Produk & Jasa
   const prodData = data.products.map((p) => ({
+    ID: p.id,
     Nama: p.name,
     Tipe: p.type,
     'Unit Usaha': p.unitId,
     Harga: p.defaultPrice,
     Satuan: p.unitOfMeasure,
-    Stok: p.stock || 0,
+    Stok: p.stock ?? 0,
     Status: p.isActive ? 'Aktif' : 'Nonaktif',
   }));
-  const wsProd = XLSX.utils.json_to_sheet(prodData);
-  XLSX.utils.book_append_sheet(wb, wsProd, 'Katalog Produk');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(prodData), 'Katalog Produk');
 
-  // 5. Sheet Unit Usaha
   const unitData = data.businessUnits.map((u) => ({
+    ID: u.id,
     Nama: u.name,
     Kode: u.code,
     Deskripsi: u.description,
     Status: u.isActive ? 'Aktif' : 'Nonaktif',
   }));
-  const wsUnit = XLSX.utils.json_to_sheet(unitData);
-  XLSX.utils.book_append_sheet(wb, wsUnit, 'Unit Usaha');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(unitData), 'Unit Usaha');
 
-  const dateStr = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(wb, `${filenamePrefix}_${dateStr}.xlsx`);
+  const docData = data.documents.map((d) => ({
+    ID: d.id,
+    'Transaction ID': d.transactionId || '',
+    Nama: d.name,
+    'Mime Type': d.mimeType,
+    Ukuran: d.size,
+    Storage: d.storageType,
+    'Drive File ID': d.driveFileId || '',
+    'Web View Link': d.webViewLink || '',
+    'Uploaded By': d.uploadedBy,
+    'Uploaded At': d.uploadedAt,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(docData), 'Dokumen');
+
+  const auditData = data.auditLogs.map((l) => ({
+    ID: l.id,
+    Aksi: l.action,
+    Entitas: l.entity,
+    'Entity ID': l.entityId,
+    'Dilakukan Oleh': l.performedBy,
+    Detail: l.details,
+    Waktu: l.timestamp,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(auditData), 'Audit Log');
+
+  const metaData = [
+    { Field: 'Backup Version', Value: data.version },
+    { Field: 'Backup ID', Value: data.backupId },
+    { Field: 'Created At', Value: data.timestamp },
+    { Field: 'Transactions', Value: data.transactions.length },
+    { Field: 'Business Units', Value: data.businessUnits.length },
+    { Field: 'Partners', Value: data.partners.length },
+    { Field: 'Accounts', Value: data.accounts.length },
+    { Field: 'Expense Categories', Value: data.expenseCategories.length },
+    { Field: 'Products', Value: data.products.length },
+    { Field: 'Documents', Value: data.documents.length },
+    { Field: 'Audit Logs', Value: data.auditLogs.length },
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metaData), 'Metadata');
+
+  XLSX.writeFile(
+    wb,
+    `${filenamePrefix}_${new Date().toISOString().split('T')[0]}_${data.backupId}.xlsx`
+  );
 }
 
 /**
- * Upload JSON backup directly to Google Drive in folder /Database Backup/YYYY/MM
+ * Upload JSON backup to Google Drive.
  */
 export async function uploadBackupToDrive(data: FullBackupData): Promise<boolean> {
   try {
     const jsonStr = JSON.stringify(data, null, 2);
-    const docData = (data.documents || []).map((d) => ({
-     'Transaction ID': d.transactionId || '-',
-     Nama: d.name,
-     'Mime Type': d.mimeType,
-     Ukuran: d.size,
-     Storage: d.storageType,
-     'Drive File ID': d.driveFileId || '-',
-     'Web View Link': d.webViewLink || '-',
-     'Uploaded By': d.uploadedBy,
-     'Uploaded At': d.uploadedAt,
-   }));
-   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(docData), 'Dokumen');
-
-   const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `backup_PT_GEMA_ABADI_${dateStr}.json`;
+    const filename = `backup_PT_GEMA_ABADI_${new Date().toISOString().split('T')[0]}_${data.backupId}.json`;
     const file = new File([jsonStr], filename, { type: 'application/json' });
-
     const result = await uploadFileToGoogleDrive(file, 'Database Backup PT Gema Abadi');
     return result !== null;
   } catch (error) {
@@ -190,87 +247,144 @@ export async function uploadBackupToDrive(data: FullBackupData): Promise<boolean
   }
 }
 
+function validateBackupData(backupData: FullBackupData): void {
+  if (!backupData || !Array.isArray(backupData.transactions)) {
+    throw new Error('Format file backup tidak valid. Dokumen transaksi tidak ditemukan.');
+  }
+
+  const validTypes = new Set([
+    'SALE',
+    'PURCHASE',
+    'EXPENSE',
+    'INCOME',
+    'RECEIVABLE_PAYMENT',
+    'DEBT_PAYMENT',
+    'TRANSFER',
+  ]);
+  const validMethods = new Set(['CASH', 'TRANSFER', 'CREDIT']);
+
+  for (const trx of backupData.transactions) {
+    if (!trx.id || !trx.trxNumber || !trx.date || !trx.unitId) {
+      throw new Error('Backup memiliki transaksi dengan identitas wajib yang kosong.');
+    }
+    if (!validTypes.has(trx.type)) throw new Error(`Tipe transaksi tidak valid: ${trx.type}`);
+    if (!validMethods.has(trx.paymentMethod)) throw new Error(`Metode pembayaran tidak valid: ${trx.paymentMethod}`);
+    if (!Number.isFinite(Number(trx.totalAmount)) || Number(trx.totalAmount) <= 0) {
+      throw new Error(`Nominal tidak valid pada transaksi ${trx.trxNumber}`);
+    }
+  }
+}
+
+async function restoreCollection<T extends { id: string }>(
+  collectionName: string,
+  items: T[],
+  counters: { pending: number; restored: number }
+): Promise<{ pending: number }> {
+  let batch = writeBatch(db);
+
+  for (const item of items) {
+    batch.set(doc(db, collectionName, item.id), cleanFirestoreData(item));
+    counters.pending += 1;
+    counters.restored += 1;
+
+    if (counters.pending >= 450) {
+      await batch.commit();
+      counters.pending = 0;
+      batch = writeBatch(db);
+    }
+  }
+
+  if (counters.pending > 0) {
+    await batch.commit();
+    counters.pending = 0;
+  }
+
+  return counters;
+}
+
 /**
- * Validate and Restore Backup Data into Firestore
+ * Validate and restore the backup.
+ *
+ * This is an overwrite-by-document-ID restore, not a destructive collection wipe.
+ * A JSON safety snapshot is generated before starting.
  */
 export async function restoreBackupData(
   backupData: FullBackupData,
   userEmail: string
 ): Promise<{ success: boolean; countRestored: number; message: string }> {
-  if (!backupData || !Array.isArray(backupData.transactions)) {
-    throw new Error('Format file backup tidak valid. Dokumen transaksi tidak ditemukan.');
+  validateBackupData(backupData);
+
+  if (!userEmail) {
+    throw new Error('Email pengguna diperlukan untuk restore.');
   }
 
-  // 1. Safety automatic snapshot before restore
   const preRestoreSnapshot = await generateFullBackupPayload();
   downloadJsonBackup(preRestoreSnapshot, 'SAFETY_SNAPSHOT_BEFORE_RESTORE');
 
-  // 2. Perform restore in batches
-  let batch = writeBatch(db);
-  let opCount = 0;
+  const groups: Array<{ collection: string; items: Array<{ id: string }> }> = [
+    { collection: 'transactions', items: backupData.transactions },
+    { collection: 'businessUnits', items: backupData.businessUnits || [] },
+    { collection: 'partners', items: backupData.partners || [] },
+    { collection: 'accounts', items: backupData.accounts || [] },
+    { collection: 'expenseCategories', items: backupData.expenseCategories || [] },
+    { collection: 'products', items: backupData.products || [] },
+    { collection: 'documents', items: backupData.documents || [] },
+    { collection: 'auditLogs', items: backupData.auditLogs || [] },
+  ];
+
   let totalRestored = 0;
+  let pending = 0;
+  let batch = writeBatch(db);
 
-  // Restore transactions
-  for (const trx of backupData.transactions) {
-    const ref = doc(db, 'transactions', trx.id);
-    batch.set(ref, cleanFirestoreData(trx));
-    opCount++;
-    totalRestored++;
+  for (const group of groups) {
+    for (const item of group.items) {
+      batch.set(
+        doc(db, group.collection, item.id),
+        cleanFirestoreData(item)
+      );
+      totalRestored += 1;
+      pending += 1;
 
-    if (opCount >= 450) {
-      await batch.commit();
-      batch = writeBatch(db);
-      opCount = 0;
-    }
-  }
-
-  // Restore Partners
-  if (Array.isArray(backupData.partners)) {
-    for (const p of backupData.partners) {
-      const ref = doc(db, 'partners', p.id);
-      batch.set(ref, cleanFirestoreData(p));
-      opCount++;
-      if (opCount >= 450) {
+      if (pending >= 450) {
         await batch.commit();
         batch = writeBatch(db);
-        opCount = 0;
+        pending = 0;
       }
     }
   }
 
-  // Restore Products
-  if (Array.isArray(backupData.products)) {
-    for (const prod of backupData.products) {
-      const ref = doc(db, 'products', prod.id);
-      batch.set(ref, cleanFirestoreData(prod));
-      opCount++;
-      if (opCount >= 450) {
-        await batch.commit();
-        batch = writeBatch(db);
-        opCount = 0;
-      }
-    }
+  if (backupData.companyProfile) {
+    batch.set(
+      doc(db, 'companyProfile', 'main'),
+      cleanFirestoreData(backupData.companyProfile)
+    );
+    totalRestored += 1;
+    pending += 1;
   }
 
-  // Audit log of restore
   const auditRef = doc(collection(db, 'auditLogs'));
-  batch.set(auditRef, cleanFirestoreData({
-    id: auditRef.id,
-    action: 'RESTORE_DATABASE',
-    entity: 'System',
-    entityId: 'ALL',
-    performedBy: userEmail,
-    details: `Restore database berhasil dilakukan. ${totalRestored} transaksi dan master data dipulihkan dari cadangan bertanggal ${backupData.timestamp}.`,
-    timestamp: new Date().toISOString(),
-  }));
+  batch.set(
+    auditRef,
+    cleanFirestoreData({
+      id: auditRef.id,
+      action: 'RESTORE_DATABASE',
+      entity: 'System',
+      entityId: backupData.backupId || 'LEGACY_BACKUP',
+      performedBy: userEmail,
+      details: `Restore database selesai dari backup ${backupData.backupId || 'lama'} dengan ${totalRestored} dokumen dipulihkan.`,
+      timestamp: new Date().toISOString(),
+    })
+  );
+  totalRestored += 1;
+  pending += 1;
 
-  if (opCount > 0) {
+  if (pending > 0) {
     await batch.commit();
   }
 
   return {
     success: true,
     countRestored: totalRestored,
-    message: `Berhasil memulihkan ${totalRestored} transaksi dan data master ke sistem.`,
+    message: `Restore selesai: ${totalRestored} dokumen berhasil dipulihkan.`,
   };
 }
