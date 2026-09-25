@@ -78,14 +78,17 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [savedTrx, setSavedTrx] = useState<Transaction | null>(null);
 
-  useEffect(() => {
-    if (units.length > 0 && !unitId) setUnitId(units[0].id);
-  }, [units, unitId]);
+  const activeUnits = units.filter((u) => u.isActive);
+  const activeAccounts = accounts.filter((a) => a.isActive);
 
   useEffect(() => {
-    if (accounts.length > 0 && !accountId) setAccountId(accounts[0].id);
-    if (accounts.length > 1 && !destinationAccountId) setDestinationAccountId(accounts[1].id);
-  }, [accounts, accountId, destinationAccountId]);
+    if (unitId && !activeUnits.some((u) => u.id === unitId)) setUnitId('');
+  }, [activeUnits, unitId]);
+
+  useEffect(() => {
+    if (accountId && !activeAccounts.some((a) => a.id === accountId)) setAccountId('');
+    if (destinationAccountId && !activeAccounts.some((a) => a.id === destinationAccountId)) setDestinationAccountId('');
+  }, [activeAccounts, accountId, destinationAccountId]);
 
   const handleTypeSelect = (t: TransactionType) => {
     setType(t);
@@ -151,8 +154,8 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
       setErrorMessage('Nominal transaksi harus lebih dari 0.');
       return;
     }
-    if (!unitId) {
-      setErrorMessage('Unit Usaha wajib dipilih.');
+    if (!unitId || !activeUnits.some((u) => u.id === unitId)) {
+      setErrorMessage('Pilih Unit Usaha yang aktif. Jika belum ada, buat dulu di Pengaturan.');
       return;
     }
     if (type !== 'TRANSFER' && type !== 'RECEIVABLE_PAYMENT' && type !== 'DEBT_PAYMENT' && !itemName.trim()) {
@@ -163,15 +166,15 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
       setErrorMessage('Kategori transaksi wajib dipilih.');
       return;
     }
-    if (paymentMethod !== 'CREDIT' && !accountId) {
-      setErrorMessage('Akun Kas/Bank wajib dipilih.');
+    if (paymentMethod !== 'CREDIT' && (!accountId || !activeAccounts.some((a) => a.id === accountId))) {
+      setErrorMessage('Pilih Akun Kas/Bank yang aktif. Jika belum ada, buat dulu di Pengaturan.');
       return;
     }
     if (paymentMethod === 'CREDIT' && !dueDate) {
       setErrorMessage('Jatuh tempo wajib diisi untuk transaksi kredit.');
       return;
     }
-    if (type === 'TRANSFER' && (!accountId || !destinationAccountId || accountId === destinationAccountId)) {
+    if (type === 'TRANSFER' && (!accountId || !destinationAccountId || accountId === destinationAccountId || !activeAccounts.some((a) => a.id === accountId) || !activeAccounts.some((a) => a.id === destinationAccountId))) {
       setErrorMessage('Akun asal dan tujuan transfer wajib dipilih dan harus berbeda.');
       return;
     }
@@ -363,14 +366,20 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
               <select
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
+                required
+                disabled={activeUnits.length === 0}
+                className="w-full px-3 py-2 bg-slate-800 disabled:opacity-50 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
               >
-                {units.map((u) => (
+                <option value="">-- Pilih Unit Usaha Aktif --</option>
+                {activeUnits.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name} ({u.code})
                   </option>
                 ))}
               </select>
+              {activeUnits.length === 0 && (
+                <p className="text-[10px] text-amber-400 mt-1">Belum ada unit usaha aktif. Tambahkan di Pengaturan.</p>
+              )}
             </div>
           </div>
 
@@ -534,14 +543,20 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
                 <select
                   value={accountId}
                   onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm"
+                  required
+                  disabled={activeAccounts.length === 0}
+                  className="w-full px-3 py-2 bg-slate-800 disabled:opacity-50 border border-slate-700 rounded-xl text-white text-sm"
                 >
-                  {accounts.map((a) => (
+                  <option value="">-- Pilih Akun Kas / Bank Aktif --</option>
+                  {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.type})
+                      {[a.name, a.bankName, a.accountNumber].filter(Boolean).join(' • ')}
                     </option>
                   ))}
                 </select>
+                {activeAccounts.length === 0 && (
+                  <p className="text-[10px] text-amber-400 mt-1">Belum ada akun aktif. Tambahkan kas/bank di Pengaturan.</p>
+                )}
               </div>
             )}
 
