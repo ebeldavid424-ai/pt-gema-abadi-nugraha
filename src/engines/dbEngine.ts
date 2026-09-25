@@ -173,6 +173,39 @@ export async function logAuditEvent(
   }
 }
 
+function validateTransactionForCommit(trx: Omit<Transaction, 'id'>): void {
+  if (!trx.trxNumber || !trx.type || !trx.date || !trx.unitId) {
+    throw new Error('Data transaksi wajib lengkap: nomor, jenis, tanggal, dan unit usaha.');
+  }
+  if (!Number.isFinite(Number(trx.totalAmount)) || Number(trx.totalAmount) <= 0) {
+    throw new Error('Total transaksi harus berupa angka lebih dari 0.');
+  }
+  if (!trx.paymentMethod) {
+    throw new Error('Cara bayar wajib dipilih.');
+  }
+  if (trx.type === 'SALE' || trx.type === 'PURCHASE') {
+    if (!trx.itemName?.trim()) throw new Error('Barang/Jasa/Uraian wajib diisi.');
+    if (!trx.itemCategory?.trim()) throw new Error('Kategori Barang/Jasa wajib dipilih.');
+  }
+  if (trx.paymentMethod !== 'CREDIT' && trx.type !== 'TRANSFER' && !trx.accountId) {
+    throw new Error('Akun Kas/Bank wajib dipilih.');
+  }
+  if (trx.paymentMethod === 'CREDIT' && !trx.dueDate) {
+    throw new Error('Jatuh tempo wajib diisi untuk transaksi Bon/Kredit.');
+  }
+  if (trx.type === 'TRANSFER') {
+    if (!trx.accountId || !trx.destinationAccountId) {
+      throw new Error('Akun asal dan akun tujuan transfer wajib diisi.');
+    }
+    if (trx.accountId === trx.destinationAccountId) {
+      throw new Error('Akun asal dan akun tujuan transfer tidak boleh sama.');
+    }
+  }
+  if ((trx.type === 'RECEIVABLE_PAYMENT' || trx.type === 'DEBT_PAYMENT') && !trx.referenceTrxId) {
+    throw new Error('Pembayaran piutang/hutang harus memiliki transaksi rujukan.');
+  }
+}
+
 /**
  * Save Transaction with ATOMIC Batch Write and Audit Trail
  */
@@ -180,6 +213,8 @@ export async function createAtomicTransaction(
   trx: Omit<Transaction, 'id'>,
   userEmail: string
 ): Promise<string> {
+  validateTransactionForCommit(trx);
+
   const trxRef = doc(collection(db, 'transactions'));
   const trxId = trxRef.id;
 

@@ -40,15 +40,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showUnitMenu, setShowUnitMenu] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const roles: { role: UserRole; label: string; desc: string }[] = [
-    { role: 'OWNER', label: 'Owner', desc: 'Akses penuh ke seluruh data & laporan' },
-    { role: 'ADMIN', label: 'Admin', desc: 'Master data & kelola transaksi' },
-    { role: 'AKUNTAN', label: 'Akuntan', desc: 'Jurnal, buku besar & laporan keuangan' },
-    { role: 'KASIR', label: 'Kasir', desc: 'Arus kas masuk/keluar & pelunasan' },
-    { role: 'SALES', label: 'Sales', desc: 'Penjualan & manajemen pelanggan' },
-    { role: 'OPERATOR', label: 'Operator', desc: 'Input transaksi operasional harian' },
-  ];
-
   const currentUnitName =
     selectedUnitId === 'all'
       ? 'Semua Unit Usaha'
@@ -174,44 +165,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* User Role Selector */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowRoleMenu(!showRoleMenu)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-amber-300 transition"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-semibold">{userProfile.role}</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-            </button>
-
-            {showRoleMenu && (
-              <div
-                className="absolute right-0 mt-1 w-64 bg-slate-800 rounded-xl shadow-2xl border border-slate-700 py-1.5 z-50 text-sm"
-                onMouseLeave={() => setShowRoleMenu(false)}
-              >
-                <div className="px-3 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700">
-                  Pilih Role Pengguna
-                </div>
-                {roles.map((r) => (
-                  <button
-                    key={r.role}
-                    type="button"
-                    onClick={() => {
-                      onChangeRole(r.role);
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 hover:bg-slate-700 transition ${
-                      userProfile.role === r.role ? 'bg-slate-700/60 text-amber-400 font-semibold' : 'text-slate-200'
-                    }`}
-                  >
-                    <div className="text-xs font-bold text-amber-300">{r.label}</div>
-                    <div className="text-[11px] text-slate-400">{r.desc}</div>
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* Current Role — read-only; authority comes from Firebase user profile */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs font-medium text-amber-300" title="Role ditentukan oleh profil pengguna di server">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-semibold">{userProfile.role}</span>
           </div>
 
           {/* User Sign In / Profile */}

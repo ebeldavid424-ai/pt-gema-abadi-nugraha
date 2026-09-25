@@ -3,7 +3,7 @@ import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { uploadFileToGoogleDrive } from './documentEngine';
 import { cleanFirestoreData } from '../utils/cleanData';
-import { Transaction, Partner, Account, BusinessUnit, ExpenseCategory, ProductItem, AuditLog, CompanyProfile } from '../types';
+import { Transaction, Partner, Account, BusinessUnit, ExpenseCategory, ProductItem, AuditLog, CompanyProfile, DocumentItem } from '../types';
 
 export interface FullBackupData {
   version: string;
@@ -16,6 +16,7 @@ export interface FullBackupData {
   expenseCategories: ExpenseCategory[];
   products: ProductItem[];
   auditLogs: AuditLog[];
+  documents: DocumentItem[];
 }
 
 /**
@@ -164,7 +165,20 @@ export function downloadExcelBackup(data: FullBackupData, filenamePrefix: string
 export async function uploadBackupToDrive(data: FullBackupData): Promise<boolean> {
   try {
     const jsonStr = JSON.stringify(data, null, 2);
-    const dateStr = new Date().toISOString().split('T')[0];
+    const docData = (data.documents || []).map((d) => ({
+     'Transaction ID': d.transactionId || '-',
+     Nama: d.name,
+     'Mime Type': d.mimeType,
+     Ukuran: d.size,
+     Storage: d.storageType,
+     'Drive File ID': d.driveFileId || '-',
+     'Web View Link': d.webViewLink || '-',
+     'Uploaded By': d.uploadedBy,
+     'Uploaded At': d.uploadedAt,
+   }));
+   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(docData), 'Dokumen');
+
+   const dateStr = new Date().toISOString().split('T')[0];
     const filename = `backup_PT_GEMA_ABADI_${dateStr}.json`;
     const file = new File([jsonStr], filename, { type: 'application/json' });
 

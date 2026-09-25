@@ -8,7 +8,6 @@ import {
   User
 } from 'firebase/auth';
 import {
-  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -21,7 +20,15 @@ import firebaseConfig from '../firebase-applet-config.json';
 export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore directly as specified by Firebase Skill
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = initializeFirestore(
+  app,
+  {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
+  },
+  (firebaseConfig as any).firestoreDatabaseId
+);
 export const auth = getAuth(app);
 
 // Configure Google Provider with Drive Scope
