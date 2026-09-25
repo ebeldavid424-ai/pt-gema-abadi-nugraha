@@ -9,9 +9,7 @@ import {
   RefreshCw,
   Download
 } from 'lucide-react';
-import { writeBatch, doc, collection } from 'firebase/firestore';
-import { db } from '../firebase';
-import { cleanFirestoreData } from '../utils/cleanData';
+import { createAtomicTransaction } from '../engines/dbEngine';
 import { Transaction } from '../types';
 
 interface ImportItem {
@@ -22,6 +20,7 @@ interface ImportItem {
   unitId: string;
   partyName: string;
   itemName: string;
+  itemCategory: string;
   qty: number;
   unitPrice: number;
   totalAmount: number;
@@ -105,32 +104,11 @@ export const ImportExportView: React.FC<ImportExportViewProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        Tanggal: '2026-09-25',
-        Tipe: 'SALE',
-        'Unit Usaha': 'bengkel',
-        'Pihak / Mitra': 'Bapak Hendra',
-        'Barang / Uraian': 'Ganti Oli & Filter Mesin',
-        Qty: 1,
-        'Harga Satuan': 250000,
-        Total: 250000,
-        'Metode Bayar': 'CASH',
-      },
-      {
-        Tanggal: '2026-09-25',
-        Tipe: 'PURCHASE',
-        'Unit Usaha': 'toko_material',
-        'Pihak / Mitra': 'PT Semen Indonesia',
-        'Barang / Uraian': 'Semen Gresik 50 Sak',
-        Qty: 50,
-        'Harga Satuan': 65000,
-        Total: 3250000,
-        'Metode Bayar': 'CREDIT',
-      },
-    ];
-
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    const templateHeaders = [[
+      'Tanggal', 'Tipe', 'Unit Usaha', 'Pihak / Mitra', 'Barang / Uraian',
+      'Kategori', 'Qty', 'Harga Satuan', 'Total', 'Metode Bayar', 'Akun'
+    ]];
+    const ws = XLSX.utils.aoa_to_sheet(templateHeaders);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Template');
     XLSX.writeFile(wb, 'Template_Import_Transaksi_PT_GEMA_ABADI.xlsx');
