@@ -9,11 +9,12 @@ import {
   ShieldCheck,
   ChevronDown
 } from 'lucide-react';
-import { BusinessUnit, UserProfile } from '../types';
+import { BusinessUnit, UserProfile, CompanyProfile } from '../types';
 import { googleSignIn, logout } from '../firebase';
 
 interface NavbarProps {
   units: BusinessUnit[];
+  companyProfile: CompanyProfile;
   selectedUnitId: string;
   onSelectUnit: (unitId: string) => void;
   syncStatus: 'synced' | 'syncing' | 'offline';
@@ -25,6 +26,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   units,
+  companyProfile,
   selectedUnitId,
   onSelectUnit,
   syncStatus,
@@ -63,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold tracking-tight text-white leading-tight">
-                PT. GEMA ABADI NUGRAHA
+                {companyProfile.name || 'Perusahaan Belum Diatur'}
               </h1>
               {/* Sync Status Badge */}
               {syncStatus === 'synced' && (
