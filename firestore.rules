@@ -5,16 +5,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function ownerEmail() {
+      return isSignedIn() && request.auth.token.email == 'ebeldavid424@gmail.com';
+    }
+
     function getUserRole() {
-      return isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
         ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role
         : 'OPERATOR';
     }
 
     function isOwner() {
-      return isSignedIn() && (
-        request.auth.token.email == 'ebeldavid424@gmail.com' || getUserRole() == 'OWNER'
-      );
+      return isSignedIn() && (ownerEmail() || getUserRole() == 'OWNER');
     }
 
     function isRole(roles) {
@@ -23,17 +26,64 @@ service cloud.firestore {
 
     function validTransactionCreate() {
       return request.resource.data.keys().hasAll([
-        'trxNumber', 'type', 'date', 'unitId', 'totalAmount', 'paymentMethod', 'status', 'createdBy', 'createdAt', 'updatedAt'
+        'trxNumber',
+        'type',
+        'date',
+        'unitId',
+        'partyName',
+        'itemName',
+        'qty',
+        'unitPrice',
+        'totalAmount',
+        'paymentMethod',
+        'accountId',
+        'status',
+        'createdBy',
+        'createdAt',
+        'updatedAt'
       ])
-      && request.resource.data.totalAmount is number
-      && request.resource.data.totalAmount > 0
-      && request.resource.data.status == 'ACTIVE'
-      && request.resource.data.createdBy == request.auth.token.email
+      && request.resource.data.trxNumber is string
+      && request.resource.data.trxNumber.size() > 0
+      && request.resource.data.type in [
+        'SALE',
+        'PURCHASE',
+        'EXPENSE',
+        'INCOME',
+        'RECEIVABLE_PAYMENT',
+        'DEBT_PAYMENT',
+        'TRANSFER'
+      ]
+      && request.resource.data.date is string
       && request.resource.data.unitId is string
       && request.resource.data.unitId.size() > 0
+      && request.resource.data.qty is number
+      && request.resource.data.qty > 0
+      && request.resource.data.unitPrice is number
+      && request.resource.data.unitPrice >= 0
+      && request.resource.data.totalAmount is number
+      && request.resource.data.totalAmount > 0
+      && request.resource.data.paymentMethod in ['CASH', 'TRANSFER', 'CREDIT']
+      && request.resource.data.status == 'ACTIVE'
+      && request.resource.data.createdBy == request.auth.token.email
       && (
-        !(request.resource.data.type in ['SALE', 'PURCHASE']) ||
+        !(request.resource.data.type in ['SALE', 'PURCHASE', 'EXPENSE']) ||
         (request.resource.data.itemCategory is string && request.resource.data.itemCategory.size() > 0)
+      )
+      && (
+        request.resource.data.paymentMethod != 'CREDIT' ||
+        (request.resource.data.dueDate is string && request.resource.data.dueDate.size() > 0)
+      )
+      && (
+        request.resource.data.type != 'TRANSFER' ||
+        (
+          request.resource.data.destinationAccountId is string
+          && request.resource.data.destinationAccountId.size() > 0
+          && request.resource.data.accountId != request.resource.data.destinationAccountId
+        )
+      )
+      && (
+        !(request.resource.data.type in ['RECEIVABLE_PAYMENT', 'DEBT_PAYMENT']) ||
+        (request.resource.data.referenceTrxId is string && request.resource.data.referenceTrxId.size() > 0)
       );
     }
 
@@ -80,20 +130,44 @@ service cloud.firestore {
     match /documents/{documentId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isRole(['OWNER','ADMIN']);
-      allow delete: if isRole(['OWNER','ADMIN']);
+      allow update, delete: if isRole(['OWNER','ADMIN']);
     }
 
     match /auditLogs/{logId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.performedBy == request.auth.token.email;
+      allow create: if isSignedIn()
+        && (
+          isOwner()
+          || request.resource.data.performedBy == request.auth.token.email
+        );
       allow update, delete: if false;
     }
 
     match /userProfiles/{userId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && (isOwner() || request.auth.uid == userId);
+
+      // First login: users may create only their own OPERATOR profile.
+      // The configured owner email may bootstrap itself as OWNER.
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && (
+          request.resource.data.role == 'OPERATOR'
+          || (ownerEmail() && request.resource.data.role == 'OWNER')
+        );
+
+      // Owner manages roles. A normal user may edit only non-privileged
+      // profile fields and may not change their role/identity.
+      allow update: if isOwner()
+        || (
+          isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+        );
+
       allow delete: if isOwner();
     }
 
