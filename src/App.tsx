@@ -402,6 +402,7 @@ export default function App() {
         companyProfile={companyProfile}
         partners={partners}
         accounts={accounts}
+        units={units}
       />
 
       {/* Upload Document Modal */}
