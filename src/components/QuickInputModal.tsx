@@ -688,9 +688,9 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   className="w-full px-3 py-2 bg-slate-800 border border-emerald-500/50 rounded-xl text-white text-sm focus:border-emerald-400 focus:outline-hidden"
                 >
                   <option value="">-- Pilih Akun Tujuan Aktif --</option>
-                  {accounts.map((a) => (
+                  {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.type})
+                      {[a.name, a.bankName, a.accountNumber].filter(Boolean).join(' • ')}
                     </option>
                   ))}
                 </select>
