@@ -1,4 +1,4 @@
-import { Transaction, CompanyProfile } from '../types';
+import { Transaction, CompanyProfile, Account } from '../types';
 import { formatRupiah } from '../engines/reportEngine';
 import { formatTerbilang } from '../engines/documentEngine';
 
@@ -33,9 +33,21 @@ export function createWhatsAppUrl(phone: string, text: string): string {
 export function generateReceiptWAMessage(
   trx: Transaction,
   company: CompanyProfile,
-  receiptNo: string
+  receiptNo: string,
+  accounts: Account[] = []
 ): string {
   const terbilang = formatTerbilang(trx.totalAmount);
+  const bankAccounts = accounts.filter((a) => a.isActive && a.type === 'BANK');
+  const bankText = bankAccounts.length
+    ? bankAccounts.map((a) => `• ${a.bankName || a.name}: ${a.accountNumber || 'nomor belum diisi'}${a.accountHolder ? ' a.n. ' + a.accountHolder : ''}`).join('\n')
+    : 'Rekening bank belum diatur di Pengaturan.';
+  const account = accounts.find((a) => a.id === trx.accountId);
+  const accountText = account ? `${account.name}${account.bankName ? ' • ' + account.bankName : ''}${account.accountNumber ? ' • ' + account.accountNumber : ''}` : '-';
+  const bankAccounts = accounts.filter((a) => a.isActive && a.type === 'BANK');
+  const bankText = bankAccounts.length
+    ? bankAccounts.map((a) => `• ${a.bankName || a.name}: ${a.accountNumber || 'nomor belum diisi'}${a.accountHolder ? ' a.n. ' + a.accountHolder : ''}`).join('\n')
+    : 'Rekening bank belum diatur di Pengaturan.';
+
   return `*${company.name.toUpperCase()}*
 *BUKTI PEMBAYARAN RESMI (KWITANSI)*
 ━━━━━━━━━━━━━━━━━━━━
@@ -51,6 +63,7 @@ _# ${terbilang} #_
 ${trx.itemName}${trx.notes ? ` (${trx.notes})` : ''}
 
 Metode Bayar : ${trx.paymentMethod === 'CASH' ? 'Kas Tunai' : trx.paymentMethod === 'TRANSFER' ? 'Transfer Bank' : 'Bon / Kredit'}
+Akun         : ${accountText}
 Petugas      : ${trx.createdByName || 'Kasir Keuangan'}
 ━━━━━━━━━━━━━━━━━━━━
 ${company.receiptFooter || 'Terima kasih atas pembayaran dan kerja sama Anda.'}`;
@@ -62,7 +75,8 @@ ${company.receiptFooter || 'Terima kasih atas pembayaran dan kerja sama Anda.'}`
 export function generateInvoiceWAMessage(
   trx: Transaction,
   company: CompanyProfile,
-  invoiceNo: string
+  invoiceNo: string,
+  accounts: Account[] = []
 ): string {
   const terbilang = formatTerbilang(trx.totalAmount);
   return `*${company.name.toUpperCase()}*
@@ -81,8 +95,7 @@ Kepada Yth. : ${trx.partyName}
 Status Pembayaran: ${trx.paymentMethod === 'CREDIT' ? `BON / KREDIT (Jatuh Tempo: ${trx.dueDate || 'Sesuai Kesepakatan'})` : 'LUNAS (TUNAI / TRANSFER)'}
 
 *Pembayaran:*
-Gunakan rekening resmi perusahaan yang tercantum pada invoice atau keterangan transaksi.
-Kontak: ${company.phone || company.email || '-'}
+Gunakan rekening resmi perusahaan berikut:\n${bankText}\nKontak: ${company.phone || company.email || '-'}
 ━━━━━━━━━━━━━━━━━━━━
 Mohon kirimkan bukti transfer jika pembayaran dilakukan via bank. Terima kasih.`;
 }
@@ -98,7 +111,8 @@ export function generateBillingReminderWAMessage(
   paidAmount: number,
   remainingAmount: number,
   dueDate: string | undefined,
-  company: CompanyProfile
+  company: CompanyProfile,
+  accounts: Account[] = []
 ): string {
   return `*${company.name.toUpperCase()}*
 *PEMBERITAHUAN TAGIHAN PIUTANG*
@@ -114,8 +128,7 @@ Berikut adalah informasi tagihan yang tercatat pada sistem kami:
 • Jatuh Tempo   : ${dueDate || 'Segera'}
 
 *Pembayaran:*
-Gunakan rekening resmi perusahaan yang tercantum pada invoice atau keterangan transaksi.
-Kontak: ${company.phone || company.email || '-'}
+Gunakan rekening resmi perusahaan berikut:\n${bankText}\nKontak: ${company.phone || company.email || '-'}
 
 Mohon untuk melakukan konfirmasi apabila pembayaran telah dilakukan. Terima kasih atas kerja sama dan kepercayaannya.
 ━━━━━━━━━━━━━━━━━━━━
