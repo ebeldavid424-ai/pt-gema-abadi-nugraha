@@ -217,7 +217,7 @@ function validateTransactionForCommit(trx: Omit<Transaction, 'id'>): void {
   if (!trx.paymentMethod) {
     throw new Error('Cara bayar wajib dipilih.');
   }
-  if (trx.type === 'SALE' || trx.type === 'PURCHASE') {
+  if (trx.type === 'SALE' || trx.type === 'PURCHASE' || trx.type === 'EXPENSE') {
     if (!trx.itemName?.trim()) throw new Error('Barang/Jasa/Uraian wajib diisi.');
     if (!trx.itemCategory?.trim()) throw new Error('Kategori Barang/Jasa wajib dipilih.');
   }
@@ -247,6 +247,10 @@ export async function createAtomicTransaction(
   trx: Omit<Transaction, 'id'>,
   userEmail: string
 ): Promise<string> {
+  if (!userEmail?.trim()) throw new Error('Email pengguna wajib tersedia untuk menyimpan transaksi.');
+  if (trx.createdBy !== userEmail) {
+    throw new Error('Identitas pembuat transaksi tidak sesuai dengan pengguna aktif.');
+  }
   validateTransactionForCommit(trx);
 
   const trxRef = doc(collection(db, 'transactions'));
