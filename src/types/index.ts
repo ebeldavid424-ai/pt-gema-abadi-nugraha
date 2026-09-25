@@ -59,12 +59,30 @@ export interface BusinessUnit {
   isSystem?: boolean;
 }
 
+export type EntityType = 'PERUSAHAAN' | 'PERORANGAN' | 'ORGANISASI';
+
+export type RelationType =
+  | 'PELANGGAN'
+  | 'SUPPLIER'
+  | 'KONTRAKTOR'
+  | 'MITRA'
+  | 'KARYAWAN'
+  | 'LAINNYA';
+
 export interface Partner {
   id: string;
+  entityType: EntityType;
   name: string;
-  type: 'PELANGGAN' | 'SUPPLIER' | 'TOKO_MATERIAL' | 'KONTRAKTOR' | 'BENGKEL' | 'KARYAWAN' | 'MITRA' | 'LAINNYA';
-  phone?: string;
+  picName?: string;
+  picTitle?: string;
+  npwp?: string;
+  phone: string;
+  email?: string;
   address?: string;
+  relations: RelationType[];
+
+  // Compatibility fields for records created by the previous schema.
+  type?: 'PELANGGAN' | 'SUPPLIER' | 'TOKO_MATERIAL' | 'KONTRAKTOR' | 'BENGKEL' | 'KARYAWAN' | 'MITRA' | 'LAINNYA';
   status: 'AKTIF' | 'NONAKTIF';
   notes?: string;
   createdAt: string;
