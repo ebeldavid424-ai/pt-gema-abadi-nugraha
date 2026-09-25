@@ -102,7 +102,7 @@ export async function initializeSystemConfiguration(): Promise<void> {
       const companySnap = await getDoc(companyDocRef);
       if (!companySnap.exists()) {
         const defaultCompany: CompanyProfile = {
-          name: 'PT. GEMA ABADI NUGRAHA',
+          name: '',
           address: '',
           phone: '',
           email: '',
@@ -113,42 +113,46 @@ export async function initializeSystemConfiguration(): Promise<void> {
       console.warn('Company profile bootstrap note:', e?.message || e);
     }
 
-    // 2. Default Business Units
+    // 2-3. Master data is entered by the company owner/admin.
+    // We do not create fake business units or bank accounts automatically.
+    // Only legacy demo records that are clearly unused are deactivated safely.
     try {
-      const unitsSnap = await getDocs(collection(db, 'businessUnits'));
-      if (unitsSnap.empty) {
-        const batch = writeBatch(db);
-        const defaultUnits: BusinessUnit[] = [
-          { id: 'bengkel', name: 'Bengkel', code: 'BKL', description: 'Unit Servis, Perbaikan & Perbengkelan', isActive: true, isSystem: true },
-          { id: 'konstruksi', name: 'Konstruksi', code: 'KNS', description: 'Unit Jasa Konstruksi & Proyek Sipil', isActive: true, isSystem: true },
-          { id: 'toko_material', name: 'Toko / Material', code: 'MTR', description: 'Unit Penjualan & Pengadaan Bahan Bangunan/Material', isActive: true, isSystem: true },
-          { id: 'lainnya', name: 'Usaha Lainnya', code: 'LNY', description: 'Unit Usaha & Jasa Tambahan', isActive: true, isSystem: true },
-          { id: 'umum', name: 'Umum / Kantor', code: 'UMM', description: 'Operasional Kantor Pusat & Manajemen', isActive: true, isSystem: true },
-        ];
-        defaultUnits.forEach((u) => {
-          batch.set(doc(db, 'businessUnits', u.id), cleanFirestoreData(u));
-        });
-        await batch.commit();
-      }
-    } catch (e: any) {
-      console.warn('Business units bootstrap note:', e?.message || e);
-    }
+      const transactionsSnap = await getDocs(collection(db, 'transactions'));
+      const activeTransactions = transactionsSnap.docs
+        .map((d) => d.data() as Transaction)
+        .filter((t) => t.status === 'ACTIVE');
 
-    // 3. Default Cash & Bank Accounts
-    try {
-      const accountsSnap = await getDocs(collection(db, 'accounts'));
-      if (accountsSnap.empty) {
-        const batch = writeBatch(db);
-        const defaultAccounts: Account[] = [
-          { id: 'kas_utama', name: 'Kas Tunai Utama', type: 'CASH', initialBalance: 0, isActive: true },
-        ];
-        defaultAccounts.forEach((acc) => {
-          batch.set(doc(db, 'accounts', acc.id), cleanFirestoreData(acc));
-        });
-        await batch.commit();
+      const usedUnitIds = new Set(activeTransactions.map((t) => t.unitId).filter(Boolean));
+      const usedAccountIds = new Set(
+        activeTransactions.flatMap((t) => [t.accountId, t.destinationAccountId].filter(Boolean))
+      );
+
+      const legacyUnitIds = ['bengkel', 'konstruksi', 'toko_material', 'lainnya', 'umum'];
+      const legacyUnitsSnap = await getDocs(collection(db, 'businessUnits'));
+
+      for (const unitDoc of legacyUnitsSnap.docs) {
+        const unit = unitDoc.data() as BusinessUnit;
+        if (
+          legacyUnitIds.includes(unitDoc.id) &&
+          unit.isSystem === true &&
+          unit.isActive === true &&
+          !usedUnitIds.has(unitDoc.id)
+        ) {
+          await updateDoc(unitDoc.ref, { isActive: false });
+        }
+      }
+
+      const legacyCashRef = doc(db, 'accounts', 'kas_utama');
+      const legacyCashSnap = await getDoc(legacyCashRef);
+      if (
+        legacyCashSnap.exists() &&
+        !usedAccountIds.has('kas_utama') &&
+        legacyCashSnap.data()?.name === 'Kas Tunai Utama'
+      ) {
+        await updateDoc(legacyCashRef, { isActive: false });
       }
     } catch (e: any) {
-      console.warn('Accounts bootstrap note:', e?.message || e);
+      console.warn('Legacy master-data cleanup note:', e?.message || e);
     }
 
     // 4. Default Expense Categories
