@@ -37,7 +37,8 @@ import {
   subscribeToProducts,
   subscribeToDocuments,
   subscribeToAuditLogs,
-  subscribeToCompanyProfile
+  subscribeToCompanyProfile,
+  ensureUserProfile
 } from './engines/dbEngine';
 
 // Components & Views
@@ -123,18 +124,41 @@ export default function App() {
   // 2. Firebase Auth Listener
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        setUserProfile((prev) => ({
-          ...prev,
-          uid: user.uid,
-          email: user.email || prev.email,
-          displayName: user.displayName || user.email?.split('@')[0] || prev.displayName,
-        }));
+      if (!user) {
+        setCurrentUser(null);
+        setUserProfile({ uid: '', email: '', displayName: '', role: 'OPERATOR' });
+        setDriveConnected(false);
+        setTransactions([]);
+        setUnits([]);
+        setAccounts([]);
+        setPartners([]);
+        setExpenseCategories([]);
+        setProducts([]);
+        setDocuments([]);
+        setAuditLogs([]);
+        setCompanyProfile({ name: 'PT. GEMA ABADI NUGRAHA', address: '', phone: '', email: '' });
+        setSyncStatus('offline');
+        return;
+      }
+
+      try {
+        const profile = await ensureUserProfile(
+          user.uid,
+          user.email || '',
+          user.displayName || user.email?.split('@')[0] || 'Pengguna'
+        );
+        setUserProfile(profile);
+
+        // Create required master configuration only after the authenticated profile exists.
+        await initializeSystemConfiguration();
+
         const token = await getAccessToken();
         setDriveConnected(!!token);
-      } else {
-        setDriveConnected(false);
+        setCurrentUser(user);
+      } catch (error: any) {
+        console.error('Failed to initialize authenticated session:', error);
+        showToast('Gagal memuat profil pengguna. Periksa konfigurasi Firebase.', 'error');
+        setCurrentUser(user);
       }
     });
 
@@ -215,11 +239,8 @@ export default function App() {
     }
   };
 
-  const handleRoleChange = (role: UserRole) => {
-    setUserProfile((prev) => ({
-      ...prev,
-      role,
-    }));
+  const handleRoleChange = (_role: UserRole) => {
+    // Role is controlled by Firestore userProfiles + security rules, not by the browser.
   };
 
   const handleOpenQuickActionItem = (type: TransactionType | 'UPLOAD_DOC') => {
