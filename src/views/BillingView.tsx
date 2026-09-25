@@ -50,7 +50,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
   } | null>(null);
 
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentAccountId, setPaymentAccountId] = useState<string>(accounts[0]?.id || 'kas_utama');
+  const [paymentAccountId, setPaymentAccountId] = useState<string>(accounts[0]?.id || '');
   const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -117,8 +117,20 @@ export const BillingView: React.FC<BillingViewProps> = ({
 
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payingItem || paymentAmount <= 0) return;
+    if (!payingItem) return;
     setPaymentError(null);
+    if (!paymentAccountId) {
+      setPaymentError('Akun Kas/Bank wajib dipilih.');
+      return;
+    }
+    if (paymentAmount <= 0 || paymentAmount > payingItem.item.remainingAmount) {
+      setPaymentError('Nominal pembayaran melebihi sisa tagihan atau tidak valid.');
+      return;
+    }
+    if (!payingItem.item.unitId) {
+      setPaymentError('Unit Usaha transaksi sumber tidak tersedia. Periksa data transaksi asal.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -130,7 +142,7 @@ export const BillingView: React.FC<BillingViewProps> = ({
         trxNumber,
         type: trxType,
         date: paymentDate,
-        unitId: payingItem.item.unitId || 'umum',
+        unitId: payingItem.item.unitId,
         partyName: payingItem.item.partyName,
         partyType: isReceivable ? 'PELANGGAN' : 'SUPPLIER',
         itemName: isReceivable
