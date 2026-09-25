@@ -108,7 +108,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
       waReminderItem.paidAmount,
       waReminderItem.remainingAmount,
       waReminderItem.dueDate,
-      companyProfile
+      companyProfile,
+      accounts
     );
     const url = createWhatsAppUrl(targetPhone, msg);
     const link = document.createElement('a');
