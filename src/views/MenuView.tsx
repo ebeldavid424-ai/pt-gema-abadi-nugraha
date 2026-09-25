@@ -104,7 +104,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
       desc: 'Arsip JSON, Excel & sinkronisasi Google Drive',
       icon: HardDrive,
       color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-      allowedRoles: ['OWNER', 'ADMIN'],
+      allowedRoles: ['OWNER', 'ADMIN', 'AKUNTAN'],
     },
     {
       id: 'IMPORT',
