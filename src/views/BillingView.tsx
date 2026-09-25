@@ -60,9 +60,13 @@ export const BillingView: React.FC<BillingViewProps> = ({
   const [waReminderItem, setWaReminderItem] = useState<ReceivableItem | null>(null);
   const [targetPhone, setTargetPhone] = useState<string>('');
 
+  const activeAccounts = accounts.filter((a) => a.isActive);
+
   useEffect(() => {
-    if (accounts.length > 0 && !paymentAccountId) setPaymentAccountId(accounts[0].id);
-  }, [accounts, paymentAccountId]);
+    if (paymentAccountId && !activeAccounts.some((a) => a.id === paymentAccountId)) {
+      setPaymentAccountId('');
+    }
+  }, [activeAccounts, paymentAccountId]);
 
   const activeTrx = transactions.filter((t) => t.status === 'ACTIVE');
   const receivables = calculateReceivables(activeTrx);
@@ -124,8 +128,8 @@ export const BillingView: React.FC<BillingViewProps> = ({
     e.preventDefault();
     if (!payingItem) return;
     setPaymentError(null);
-    if (!paymentAccountId) {
-      setPaymentError('Akun Kas/Bank wajib dipilih.');
+    if (!paymentAccountId || !activeAccounts.some((a) => a.id === paymentAccountId)) {
+      setPaymentError('Pilih Akun Kas/Bank yang aktif.');
       return;
     }
     if (paymentAmount <= 0 || paymentAmount > payingItem.item.remainingAmount) {
@@ -426,9 +430,9 @@ export const BillingView: React.FC<BillingViewProps> = ({
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-xs"
                 >
                   <option value="">-- Pilih Akun Kas/Bank --</option>
-                  {accounts.filter((a) => a.isActive).map((a) => (
+                  {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.type})
+                      {[a.name, a.bankName, a.accountNumber].filter(Boolean).join(' • ')}
                     </option>
                   ))}
                 </select>
