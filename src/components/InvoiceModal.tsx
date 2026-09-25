@@ -10,7 +10,7 @@ import {
   MessageCircle,
   Phone
 } from 'lucide-react';
-import { Transaction, CompanyProfile, Partner } from '../types';
+import { Transaction, CompanyProfile, Partner, Account, BusinessUnit } from '../types';
 import { formatTerbilang, shareDocumentOrText } from '../engines/documentEngine';
 import { formatRupiah } from '../engines/reportEngine';
 import { createWhatsAppUrl, generateInvoiceWAMessage } from '../utils/whatsapp';
@@ -21,6 +21,8 @@ interface InvoiceModalProps {
   transaction: Transaction | null;
   companyProfile: CompanyProfile;
   partners: Partner[];
+  accounts: Account[];
+  units: BusinessUnit[];
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({
@@ -29,6 +31,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   transaction,
   companyProfile,
   partners,
+  accounts,
+  units,
 }) => {
   const [showWhatsAppPrompt, setShowWhatsAppPrompt] = useState(false);
   const [targetPhone, setTargetPhone] = useState('');
@@ -42,6 +46,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const matchedPartner = partners.find(
     (p) => p.name.toLowerCase() === transaction.partyName.toLowerCase()
   );
+
+  const selectedUnitName = units.find((u) => u.id === transaction.unitId)?.name || transaction.unitId;
+  const selectedAccount = accounts.find((a) => a.id === transaction.accountId);
+  const activeBankAccounts = accounts.filter((a) => a.isActive && a.type === 'BANK');
 
   const formattedDate = new Date(transaction.date).toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -180,7 +188,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
               )}
               <div>
                 <span className="text-slate-500">Unit Usaha:</span>{' '}
-                <span className="font-bold text-slate-900 uppercase">{transaction.unitId}</span>
+                <span className="font-bold text-slate-900 uppercase">{selectedUnitName}</span>
               </div>
             </div>
           </div>
@@ -233,10 +241,23 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           {/* Bank Payment Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
-              <span className="font-bold text-slate-700 uppercase">Informasi Pembayaran Bank Resmi:</span>
-              <p className="text-slate-600">• Bank BCA: <span className="font-bold font-mono text-slate-900">8830192831</span> a.n PT Gema Abadi Nugraha</p>
-              <p className="text-slate-600">• Bank Mandiri: <span className="font-bold font-mono text-slate-900">137001928374</span> a.n PT Gema Abadi Nugraha</p>
-              <p className="text-slate-500 italic text-[10px] mt-1">Harap cantumkan No. Faktur saat konfirmasi transfer.</p>
+              <span className="font-bold text-slate-700 uppercase">Rekening Bank Resmi Perusahaan</span>
+              {activeBankAccounts.length > 0 ? activeBankAccounts.map((a) => (
+                <p key={a.id} className="text-slate-600">
+                  • {a.bankName || a.name}: <span className="font-bold font-mono text-slate-900">{a.accountNumber || 'Nomor belum diisi'}</span>{a.accountHolder ? ' a.n. ' + a.accountHolder : ''}
+                </p>
+              )) : (
+                <p className="text-amber-700">Belum ada rekening bank aktif. Atur di Pengaturan → Kas, Bank & E-Wallet.</p>
+              )}
+              <p className="text-slate-500 italic text-[10px] mt-1">Gunakan rekening yang tercantum di sistem ini untuk pembayaran.</p>
+            </div>
+
+            {/* Account actually used */}
+            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-[11px] space-y-1">
+              <span className="font-bold text-blue-800 uppercase">Akun yang Dipakai Transaksi</span>
+              <p className="text-slate-700">{selectedAccount?.name || 'Akun tidak ditemukan'}</p>
+              {selectedAccount?.bankName && <p className="text-slate-600">Bank: {selectedAccount.bankName}</p>}
+              {selectedAccount?.accountNumber && <p className="text-slate-600">No. Rek: <span className="font-mono font-bold">{selectedAccount.accountNumber}</span></p>}
             </div>
 
             {/* Signature Box */}
