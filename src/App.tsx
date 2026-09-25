@@ -23,7 +23,6 @@ import {
   AuditLog,
   CompanyProfile,
   UserProfile,
-  UserRole,
   TransactionType
 } from './types';
 import {
@@ -238,10 +237,6 @@ export default function App() {
     }
   };
 
-  const handleRoleChange = (_role: UserRole) => {
-    // Role is controlled by Firestore userProfiles + security rules, not by the browser.
-  };
-
   const handleOpenQuickActionItem = (type: TransactionType | 'UPLOAD_DOC') => {
     if (type === 'UPLOAD_DOC') {
       setIsUploadDocOpen(true);
@@ -346,7 +341,6 @@ export default function App() {
             transactions={transactions}
             companyProfile={companyProfile}
             userProfile={userProfile}
-            onChangeRole={handleRoleChange}
             driveConnected={driveConnected}
             onConnectDrive={handleConnectDrive}
             userEmail={userProfile.email}
