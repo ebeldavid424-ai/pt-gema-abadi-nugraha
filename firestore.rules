@@ -82,7 +82,7 @@ service cloud.firestore {
         )
       )
       && (
-        request.resource.data.type not in ['RECEIVABLE_PAYMENT', 'DEBT_PAYMENT'] ||
+        !(request.resource.data.type in ['RECEIVABLE_PAYMENT', 'DEBT_PAYMENT']) ||
         (request.resource.data.referenceTrxId is string && request.resource.data.referenceTrxId.size() > 0)
       );
     }
