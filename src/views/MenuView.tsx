@@ -20,8 +20,7 @@ import {
   AuditLog,
   CompanyProfile,
   UserProfile,
-  Transaction,
-  UserRole
+  Transaction
 } from '../types';
 import { PartnersView } from './PartnersView';
 import { ProductsView } from './ProductsView';
@@ -42,7 +41,6 @@ interface MenuViewProps {
   transactions: Transaction[];
   companyProfile: CompanyProfile;
   userProfile: UserProfile;
-  onChangeRole: (role: UserRole) => void;
   driveConnected: boolean;
   onConnectDrive: () => Promise<void>;
   userEmail: string;
@@ -69,7 +67,6 @@ export const MenuView: React.FC<MenuViewProps> = ({
   transactions,
   companyProfile,
   userProfile,
-  onChangeRole,
   driveConnected,
   onConnectDrive,
   userEmail,
@@ -91,7 +88,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
       desc: `${products.length} Item katalog suku cadang & servis`,
       icon: Package,
       color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-      allowedRoles: ['OWNER', 'ADMIN', 'SALES', 'OPERATOR'],
+      allowedRoles: ['OWNER', 'ADMIN', 'SALES'],
     },
     {
       id: 'DOCUMENTS',
@@ -107,7 +104,7 @@ export const MenuView: React.FC<MenuViewProps> = ({
       desc: 'Arsip JSON, Excel & sinkronisasi Google Drive',
       icon: HardDrive,
       color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-      allowedRoles: ['OWNER', 'ADMIN', 'AKUNTAN'],
+      allowedRoles: ['OWNER', 'ADMIN'],
     },
     {
       id: 'IMPORT',
@@ -266,7 +263,6 @@ export const MenuView: React.FC<MenuViewProps> = ({
           accounts={accounts}
           expenseCategories={expenseCategories}
           userProfile={userProfile}
-          onChangeRole={onChangeRole}
           driveConnected={driveConnected}
           onConnectDrive={onConnectDrive}
         />
