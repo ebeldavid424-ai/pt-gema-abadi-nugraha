@@ -194,6 +194,13 @@ export async function saveDocumentRecord(
   docData: Omit<DocumentItem, 'id'>
 ): Promise<string> {
   const id = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const dataUrlLength = docData.dataUrl ? docData.dataUrl.length : 0;
+  // Firestore documents have a size limit. Keep local previews small; Drive is the
+  // durable location for larger attachments.
+  if (dataUrlLength > 700_000) {
+    throw new Error('Lampiran terlalu besar untuk penyimpanan lokal. Hubungkan Google Drive atau gunakan file yang lebih kecil.');
+  }
+
   const fullDoc: DocumentItem = {
     ...docData,
     id,
