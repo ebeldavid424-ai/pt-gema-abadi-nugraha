@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Building2,
   Wallet,
@@ -18,7 +18,7 @@ import {
   ExpenseCategory,
   UserProfile
 } from '../types';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { cleanFirestoreData } from '../utils/cleanData';
 
@@ -60,9 +60,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<Account['type']>('BANK');
   const [newAccountNo, setNewAccountNo] = useState('');
+  const [newBankName, setNewBankName] = useState('');
+  const [newAccountHolder, setNewAccountHolder] = useState('');
+  const [newInitialBalance, setNewInitialBalance] = useState('');
 
   // New Expense Category
   const [newCategoryName, setNewCategoryName] = useState('');
+
+  useEffect(() => {
+    setName(companyProfile.name || '');
+    setAddress(companyProfile.address || '');
+    setPhone(companyProfile.phone || '');
+    setEmail(companyProfile.email || '');
+    setTaxId(companyProfile.taxId || '');
+    setReceiptFooter(companyProfile.receiptFooter || '');
+  }, [companyProfile]);
 
   // Status & Error messages
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -124,15 +136,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         id,
         name: newAccountName.trim(),
         type: newAccountType,
+        ...(newBankName.trim() ? { bankName: newBankName.trim() } : {}),
         ...(newAccountNo.trim() ? { accountNumber: newAccountNo.trim() } : {}),
-        initialBalance: 0,
+        ...(newAccountHolder.trim() ? { accountHolder: newAccountHolder.trim() } : {}),
+        initialBalance: Math.max(0, Number(newInitialBalance) || 0),
         isActive: true,
       };
       await setDoc(doc(db, 'accounts', id), cleanFirestoreData(acc));
       setNewAccountName('');
       setNewAccountNo('');
+      setNewBankName('');
+      setNewAccountHolder('');
+      setNewInitialBalance('');
     } catch (err: any) {
       setSettingsError(err.message || 'Gagal menambahkan akun');
+    }
+  };
+
+  const handleToggleUnit = async (unit: BusinessUnit) => {
+    try {
+      await updateDoc(doc(db, 'businessUnits', unit.id), { isActive: !unit.isActive });
+    } catch (err: any) {
+      setSettingsError(err.message || 'Gagal mengubah status unit usaha');
+    }
+  };
+
+  const handleToggleAccount = async (account: Account) => {
+    try {
+      await updateDoc(doc(db, 'accounts', account.id), { isActive: !account.isActive });
+    } catch (err: any) {
+      setSettingsError(err.message || 'Gagal mengubah status akun');
     }
   };
 
@@ -263,15 +296,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {units.map((u) => (
+          {units.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-slate-700 text-center text-xs text-slate-500">Belum ada unit usaha. Tambahkan unit yang benar-benar digunakan perusahaan.</div>
+          ) : units.map((u) => (
             <div key={u.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-white text-xs">{u.name}</span>
-                <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-amber-400">
-                  {u.code}
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-bold text-white text-xs">{u.name}</span>
+                  <span className="ml-2 font-mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-amber-400">{u.code}</span>
+                </div>
+                <button type="button" onClick={() => handleToggleUnit(u)} className={`px-2 py-1 rounded-lg text-[10px] font-bold border ${u.isActive ? 'bg-emerald-950 border-emerald-800 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                  {u.isActive ? 'Aktif' : 'Nonaktif'}
+                </button>
               </div>
-              <p className="text-[11px] text-slate-400">{u.description}</p>
+              <p className="text-[11px] text-slate-400">{u.description || '-'}</p>
             </div>
           ))}
         </div>
@@ -327,7 +365,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <span className="font-bold text-white">{a.name}</span>
                 <span className="text-[10px] text-amber-400">{a.type}</span>
               </div>
-              <p className="text-slate-400 text-[11px]">No Rek: {a.accountNumber || '-'}</p>
+              {a.bankName && <p className="text-slate-400 text-[11px]">Bank/Provider: {a.bankName}</p>}
+              {a.accountNumber && <p className="text-slate-400 text-[11px]">No Rek: <span className="font-mono">{a.accountNumber}</span></p>}
+              {a.accountHolder && <p className="text-slate-400 text-[11px]">Atas Nama: {a.accountHolder}</p>}
+              <p className="text-slate-400 text-[11px]">Saldo Awal: Rp {Number(a.initialBalance || 0).toLocaleString('id-ID')}</p>
+              <button type="button" onClick={() => handleToggleAccount(a)} className={`mt-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${a.isActive ? 'bg-emerald-950 border-emerald-800 text-emerald-300' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
+                {a.isActive ? 'Aktif' : 'Nonaktif'}
+              </button>
             </div>
           ))}
         </div>
@@ -355,9 +399,31 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </select>
             <input
               type="text"
+              placeholder="Nama Bank / Provider"
+              value={newBankName}
+              onChange={(e) => setNewBankName(e.target.value)}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
+            />
+            <input
+              type="text"
               placeholder="Nomor Rekening"
               value={newAccountNo}
               onChange={(e) => setNewAccountNo(e.target.value)}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
+            />
+            <input
+              type="text"
+              placeholder="Atas Nama Rekening"
+              value={newAccountHolder}
+              onChange={(e) => setNewAccountHolder(e.target.value)}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
+            />
+            <input
+              type="number"
+              min="0"
+              placeholder="Saldo Awal (Rp)"
+              value={newInitialBalance}
+              onChange={(e) => setNewInitialBalance(e.target.value)}
               className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white"
             />
           </div>
