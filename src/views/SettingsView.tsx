@@ -130,6 +130,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (!newAccountName.trim()) return;
     setSettingsError(null);
 
+    if (newAccountType === 'BANK' && (!newBankName.trim() || !newAccountNo.trim())) {
+      setSettingsError('Untuk rekening bank, nama bank dan nomor rekening wajib diisi.');
+      return;
+    }
+
     try {
       const id = `acc_${Date.now()}`;
       const acc: Account = {
