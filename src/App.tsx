@@ -256,6 +256,7 @@ export default function App() {
       {/* Top Header Navbar */}
       <Navbar
         units={units}
+        companyProfile={companyProfile}
         selectedUnitId={selectedUnitId}
         onSelectUnit={setSelectedUnitId}
         syncStatus={syncStatus}
@@ -390,6 +391,7 @@ export default function App() {
         transaction={receiptTrx}
         companyProfile={companyProfile}
         partners={partners}
+        accounts={accounts}
       />
 
       {/* Official Sales Invoice (Faktur Penjualan) Modal */}
@@ -399,6 +401,7 @@ export default function App() {
         transaction={invoiceTrx}
         companyProfile={companyProfile}
         partners={partners}
+        accounts={accounts}
       />
 
       {/* Upload Document Modal */}
