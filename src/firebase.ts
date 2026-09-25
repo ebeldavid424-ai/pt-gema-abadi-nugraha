@@ -2,8 +2,8 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   signInWithPopup,
+  reauthenticateWithPopup,
   GoogleAuthProvider,
-  onAuthStateChanged,
   signOut,
   User
 } from 'firebase/auth';
@@ -40,9 +40,11 @@ export const auth = getAuth(app);
 
 // Configure Google Provider with Drive Scope
 export const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+googleProvider.addScope(GOOGLE_DRIVE_FILE_SCOPE);
 
 // In-memory token cache for Google Workspace Drive API
+const GOOGLE_DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;
 
@@ -69,9 +71,45 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
   }
 };
 
+/**
+ * Request Google Drive access for an already authenticated Google user.
+ * This keeps the Firebase session intact and only refreshes the Google OAuth
+ * credential needed by the browser-side Drive API calls.
+ */
+export const connectGoogleDrive = async (): Promise<{ user: User; accessToken: string } | null> => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    const result = await googleSignIn();
+    if (!result?.accessToken) {
+      throw new Error('Login Google berhasil, tetapi izin Google Drive belum diberikan.');
+    }
+    return { user: result.user, accessToken: result.accessToken };
+  }
+
+  try {
+    isSigningIn = true;
+    const result = await reauthenticateWithPopup(currentUser, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const accessToken = credential?.accessToken || null;
+
+    if (!accessToken) {
+      throw new Error('Izin Google Drive tidak menghasilkan access token.');
+    }
+
+    cachedAccessToken = accessToken;
+    return { user: result.user, accessToken };
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+export const clearCachedAccessToken = () => {
+  cachedAccessToken = null;
+};
+
 export const logout = async () => {
   await signOut(auth);
-  cachedAccessToken = null;
+  clearCachedAccessToken();
 };
 
 // Error Handling according to Firebase Skill specification
