@@ -98,8 +98,15 @@ service cloud.firestore {
     match /transactions/{transactionId} {
       allow read: if isSignedIn();
       allow create: if isRole(['OWNER','ADMIN','AKUNTAN','KASIR','SALES','OPERATOR']) && validTransactionCreate();
-      allow update: if isRole(['OWNER','ADMIN','AKUNTAN']);
-      allow delete: if isOwner();
+      // Transactions are append-only. Corrections must use the VOID/cancel flow so the
+      // original amount, creator, and audit trail cannot be silently rewritten.
+      allow update: if isRole(['OWNER','ADMIN','AKUNTAN'])
+        && resource.data.status == 'ACTIVE'
+        && request.resource.data.status == 'CANCELLED'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'cancelReason', 'updatedAt'
+        ]);
+      allow delete: if false;
     }
 
     match /businessUnits/{unitId} {
