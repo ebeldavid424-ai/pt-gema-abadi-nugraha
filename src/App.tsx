@@ -10,7 +10,7 @@ import {
   testConnection,
   getAccessToken,
   setCachedAccessToken,
-  googleSignIn,
+  connectGoogleDrive,
 } from './firebase';
 import {
   Transaction,
@@ -225,7 +225,7 @@ export default function App() {
   // Handle Google Drive Connection via OAuth Popup
   const handleConnectDrive = async () => {
     try {
-      const res = await googleSignIn();
+      const res = await connectGoogleDrive();
       if (res?.accessToken) {
         setCachedAccessToken(res.accessToken);
         setDriveConnected(true);
