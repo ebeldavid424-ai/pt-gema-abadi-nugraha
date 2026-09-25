@@ -38,12 +38,12 @@ export const db = (() => {
 })();
 export const auth = getAuth(app);
 
-// Configure Google Provider with Drive Scope
+// Configure Google Provider with the narrow Drive scope used by this app.
+const GOOGLE_DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope(GOOGLE_DRIVE_FILE_SCOPE);
 
 // In-memory token cache for Google Workspace Drive API
-const GOOGLE_DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;
