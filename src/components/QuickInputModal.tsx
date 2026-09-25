@@ -57,8 +57,6 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   driveConnected,
   onSuccess,
 }) => {
-  if (!isOpen) return null;
-
   const todayStr = new Date().toISOString().split('T')[0];
   const itemCategoryOptions = ['Material', 'Barang', 'Jasa', 'Sparepart', 'Peralatan', 'Bahan Bakar', 'Lainnya'];
 
@@ -106,6 +104,35 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setPartyType('KARYAWAN');
     }
   }, [defaultType, isOpen]);
+
+  const handleTypeChange = (nextType: TransactionType) => {
+    setType(nextType);
+    setItemCategory('');
+    setDueDate('');
+    if (nextType === 'SALE') {
+      setPartyType('PELANGGAN');
+      setPaymentMethod('CASH');
+    } else if (nextType === 'PURCHASE') {
+      setPartyType('SUPPLIER');
+      setPaymentMethod('CASH');
+    } else if (nextType === 'RECEIVABLE_PAYMENT') {
+      setPartyType('PELANGGAN');
+      setPaymentMethod('CASH');
+    } else if (nextType === 'DEBT_PAYMENT') {
+      setPartyType('SUPPLIER');
+      setPaymentMethod('CASH');
+    } else if (nextType === 'EXPENSE') {
+      setPartyType('KARYAWAN');
+      setPaymentMethod('CASH');
+    } else if (nextType === 'TRANSFER') {
+      setPartyType('LAINNYA');
+      setPaymentMethod('TRANSFER');
+    }
+    setTotalAmount(0);
+    setUnitPrice(0);
+  };
+
+  if (!isOpen) return null;
 
   // Recalculate total amount when qty or price changes
   const handleQtyChange = (val: number) => {
@@ -319,7 +346,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setType(t.id as any)}
+                  onClick={() => handleTypeChange(t.id as TransactionType)}
                   className={`py-2 px-2 text-xs font-bold rounded-xl border text-center transition ${
                     type === t.id
                       ? 'bg-amber-500 text-slate-950 border-amber-400 shadow'
@@ -502,7 +529,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                       type="number"
                       min="1"
                       value={qty}
-                      onChange={(e) => handleQtyChange(Math.max(1, Number(e.target.value)))}
+                      onChange={(e) => handleQtyChange(Math.max(1, Number(e.target.value) || 1))}
                       className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm text-center font-bold"
                     />
                   </div>
@@ -532,6 +559,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   min="1"
                   value={totalAmount || ''}
                   onChange={(e) => handleDirectTotalChange(Number(e.target.value))}
+                  readOnly={type === 'SALE' || type === 'PURCHASE'}
                   placeholder="Rp 0"
                   required
                   className="w-full px-3 py-2 bg-slate-800 border-2 border-amber-500/50 rounded-xl text-amber-300 text-base font-black tracking-wide"
@@ -601,6 +629,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   onChange={(e) => setAccountId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
                 >
+                  <option value="" disabled>-- Pilih Akun --</option>
+                  <option value="" disabled>-- Pilih Akun Asal --</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
@@ -638,6 +668,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   onChange={(e) => setDestinationAccountId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-800 border border-emerald-500/50 rounded-xl text-white text-sm focus:border-emerald-400 focus:outline-hidden"
                 >
+                  <option value="" disabled>-- Pilih Akun Tujuan --</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
