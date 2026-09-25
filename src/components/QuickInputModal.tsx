@@ -83,14 +83,17 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (units.length > 0 && !unitId) setUnitId(units[0].id);
-  }, [units, unitId]);
+  const activeUnits = units.filter((u) => u.isActive);
+  const activeAccounts = accounts.filter((a) => a.isActive);
 
   useEffect(() => {
-    if (accounts.length > 0 && !accountId) setAccountId(accounts[0].id);
-    if (accounts.length > 1 && !destinationAccountId) setDestinationAccountId(accounts[1].id);
-  }, [accounts, accountId, destinationAccountId]);
+    if (unitId && !activeUnits.some((u) => u.id === unitId)) setUnitId('');
+  }, [activeUnits, unitId]);
+
+  useEffect(() => {
+    if (accountId && !activeAccounts.some((a) => a.id === accountId)) setAccountId('');
+    if (destinationAccountId && !activeAccounts.some((a) => a.id === destinationAccountId)) setDestinationAccountId('');
+  }, [activeAccounts, accountId, destinationAccountId]);
 
   // Sync default type when opened
   useEffect(() => {
@@ -174,7 +177,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   // Autocomplete from Partner Catalog
   const handleSelectPartner = (p: Partner) => {
     setPartyName(p.name);
-    setPartyType(p.type);
+    const relation = p.relations?.[0];
+    setPartyType(relation || p.type || 'MITRA');
   };
 
   // Handle camera / file select
@@ -204,8 +208,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       return;
     }
 
-    if (!unitId) {
-      setErrorMessage('Silakan pilih Unit Usaha.');
+    if (!unitId || !activeUnits.some((u) => u.id === unitId)) {
+      setErrorMessage('Pilih Unit Usaha yang aktif. Jika belum ada, buat dulu di Pengaturan.');
       return;
     }
 
@@ -219,8 +223,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       return;
     }
 
-    if (type !== 'TRANSFER' && paymentMethod !== 'CREDIT' && !accountId) {
-      setErrorMessage('Silakan pilih akun Kas/Bank.');
+    if (type !== 'TRANSFER' && paymentMethod !== 'CREDIT' && (!accountId || !activeAccounts.some((a) => a.id === accountId))) {
+      setErrorMessage('Pilih Akun Kas/Bank yang aktif. Jika belum ada, buat dulu di Pengaturan.');
       return;
     }
 
@@ -229,8 +233,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       return;
     }
 
-    if (type === 'TRANSFER' && (!accountId || !destinationAccountId)) {
-      setErrorMessage('Pilih akun asal dan akun tujuan transfer.');
+    if (type === 'TRANSFER' && (!accountId || !destinationAccountId || !activeAccounts.some((a) => a.id === accountId) || !activeAccounts.some((a) => a.id === destinationAccountId))) {
+      setErrorMessage('Pilih akun asal dan akun tujuan transfer yang aktif.');
       return;
     }
 
@@ -401,8 +405,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                 required
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
               >
-                <option value="" disabled>-- Pilih Unit Usaha --</option>
-                {units.map((u) => (
+                <option value="">-- Pilih Unit Usaha Aktif --</option>
+                {activeUnits.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name} ({u.code})
                   </option>
@@ -641,12 +645,14 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                 <select
                   value={accountId}
                   onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
+                  required
+                  disabled={activeAccounts.length === 0}
+                  className="w-full px-3 py-2 bg-slate-800 disabled:opacity-50 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
                 >
-                  <option value="" disabled>-- Pilih Akun --</option>
-                  {accounts.map((a) => (
+                  <option value="">-- Pilih Akun Kas / Bank Aktif --</option>
+                  {activeAccounts.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name} ({a.type})
+                      {[a.name, a.bankName, a.accountNumber].filter(Boolean).join(' • ')}
                     </option>
                   ))}
                 </select>
@@ -681,7 +687,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   onChange={(e) => setDestinationAccountId(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-800 border border-emerald-500/50 rounded-xl text-white text-sm focus:border-emerald-400 focus:outline-hidden"
                 >
-                  <option value="" disabled>-- Pilih Akun Tujuan --</option>
+                  <option value="">-- Pilih Akun Tujuan Aktif --</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name} ({a.type})
