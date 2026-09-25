@@ -88,7 +88,7 @@ export default function App() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
-    name: 'PT. GEMA ABADI NUGRAHA',
+    name: '',
     address: '',
     phone: '',
     email: '',
@@ -134,7 +134,7 @@ export default function App() {
         setProducts([]);
         setDocuments([]);
         setAuditLogs([]);
-        setCompanyProfile({ name: 'PT. GEMA ABADI NUGRAHA', address: '', phone: '', email: '' });
+        setCompanyProfile({ name: '', address: '', phone: '', email: '' });
         setSyncStatus('offline');
         return;
       }
