@@ -60,10 +60,11 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   if (!isOpen) return null;
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const itemCategoryOptions = ['Material', 'Barang', 'Jasa', 'Sparepart', 'Peralatan', 'Bahan Bakar', 'Lainnya'];
 
   const [type, setType] = useState<TransactionType>(defaultType);
   const [date, setDate] = useState<string>(todayStr);
-  const [unitId, setUnitId] = useState<string>(units[0]?.id || 'bengkel');
+  const [unitId, setUnitId] = useState<string>(units[0]?.id || '');
   const [partyName, setPartyName] = useState<string>('');
   const [partyType, setPartyType] = useState<string>('PELANGGAN');
   const [itemName, setItemName] = useState<string>('');
@@ -72,7 +73,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
-  const [accountId, setAccountId] = useState<string>(accounts[0]?.id || 'kas_utama');
+  const [accountId, setAccountId] = useState<string>(accounts[0]?.id || '');
   const [destinationAccountId, setDestinationAccountId] = useState<string>(accounts[1]?.id || '');
   const [dueDate, setDueDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -87,6 +88,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   // Sync default type when opened
   useEffect(() => {
     setType(defaultType);
+    setItemCategory('');
     if (defaultType === 'SALE') {
       setPartyType('PELANGGAN');
       setPaymentMethod('CASH');
@@ -166,8 +168,33 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       return;
     }
 
+    if (!unitId) {
+      setErrorMessage('Silakan pilih Unit Usaha.');
+      return;
+    }
+
     if (!itemName && type !== 'TRANSFER') {
       setErrorMessage('Silakan isi uraian barang, jasa, atau pengeluaran.');
+      return;
+    }
+
+    if ((type === 'SALE' || type === 'PURCHASE') && !itemCategory.trim()) {
+      setErrorMessage('Kategori Barang/Jasa wajib dipilih untuk penjualan atau pembelian.');
+      return;
+    }
+
+    if (type !== 'TRANSFER' && paymentMethod !== 'CREDIT' && !accountId) {
+      setErrorMessage('Silakan pilih akun Kas/Bank.');
+      return;
+    }
+
+    if (paymentMethod === 'CREDIT' && !dueDate) {
+      setErrorMessage('Jatuh tempo wajib diisi untuk transaksi Bon/Kredit.');
+      return;
+    }
+
+    if (type === 'TRANSFER' && (!accountId || !destinationAccountId)) {
+      setErrorMessage('Pilih akun asal dan akun tujuan transfer.');
       return;
     }
 
@@ -330,8 +357,10 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               <select
                 value={unitId}
                 onChange={(e) => setUnitId(e.target.value)}
+                required
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:border-amber-400 focus:outline-hidden"
               >
+                <option value="" disabled>-- Pilih Unit Usaha --</option>
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name} ({u.code})
@@ -394,13 +423,14 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                   <FileText className="w-3.5 h-3.5 text-amber-400" />
                   {type === 'EXPENSE' ? 'Kategori & Keterangan Biaya' : 'Barang / Jasa / Uraian'}
                 </label>
-                {type === 'EXPENSE' && expenseCategories.length > 0 && (
+                {type === 'EXPENSE' ? (
                   <select
                     value={itemCategory}
                     onChange={(e) => {
                       setItemCategory(e.target.value);
                       if (!itemName) setItemName(e.target.value);
                     }}
+                    required
                     className="text-[11px] bg-slate-800 text-amber-300 border border-slate-700 rounded-lg px-2 py-0.5"
                   >
                     <option value="">-- Kategori Biaya --</option>
@@ -410,7 +440,19 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                       </option>
                     ))}
                   </select>
-                )}
+                ) : (type === 'SALE' || type === 'PURCHASE') ? (
+                  <select
+                    value={itemCategory}
+                    onChange={(e) => setItemCategory(e.target.value)}
+                    required
+                    className="text-[11px] bg-slate-800 text-amber-300 border border-slate-700 rounded-lg px-2 py-0.5"
+                  >
+                    <option value="">-- Kategori Barang/Jasa --</option>
+                    {itemCategoryOptions.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
               <input
                 type="text"
