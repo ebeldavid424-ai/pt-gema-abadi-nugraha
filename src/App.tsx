@@ -179,11 +179,11 @@ export default function App() {
     });
 
     const unsubUnits = subscribeToBusinessUnits((data) => {
-      if (data.length > 0) setUnits(data);
+      setUnits(data);
     });
 
     const unsubAccounts = subscribeToAccounts((data) => {
-      if (data.length > 0) setAccounts(data);
+      setAccounts(data);
     });
 
     const unsubPartners = subscribeToPartners((data) => {
@@ -191,7 +191,7 @@ export default function App() {
     });
 
     const unsubCats = subscribeToExpenseCategories((data) => {
-      if (data.length > 0) setExpenseCategories(data);
+      setExpenseCategories(data);
     });
 
     const unsubProds = subscribeToProducts((data) => {
