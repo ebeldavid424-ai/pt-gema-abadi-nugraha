@@ -468,6 +468,7 @@ export const QuickInputView: React.FC<QuickInputViewProps> = ({
                   min="1"
                   value={totalAmount || ''}
                   onChange={(e) => handleDirectTotalChange(Number(e.target.value))}
+                  readOnly={type === 'SALE' || type === 'PURCHASE'}
                   placeholder="Rp 0"
                   required
                   className="w-full px-3 py-2 bg-slate-800 border-2 border-amber-500 rounded-xl text-amber-300 font-black text-base"
