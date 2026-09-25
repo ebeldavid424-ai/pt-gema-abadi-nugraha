@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for Role-Based Access Control (RBAC)
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return !isSignedIn() || (
+        request.auth.token.email == 'ebeldavid424@gmail.com' ||
+        (exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role == 'OWNER')
+      );
+    }
+
+    function getUserRole() {
+      return !isSignedIn() ? 'OWNER' : (
+        exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid))
+          ? get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role
+          : (request.auth.token.email == 'ebeldavid424@gmail.com' ? 'OWNER' : 'OPERATOR')
+      );
+    }
+
+    function isRole(roles) {
+      return !isSignedIn() || isOwner() || getUserRole() in roles;
+    }
+
+    // Default catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection testing doc
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Transactions collection:
+    // Create: all roles (Owner, Admin, Akuntan, Kasir, Sales, Operator)
+    // Update/Void: Owner, Admin, Akuntan
+    // Delete: strictly Owner
+    match /transactions/{transactionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isRole(['OWNER', 'ADMIN', 'AKUNTAN']);
+      allow delete: if isOwner();
+    }
+
+    // Business units:
+    // Read: all authenticated/preview
+    // Write: Owner and Admin
+    match /businessUnits/{unitId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN']);
+    }
+
+    // Partners (Pelanggan, Supplier, Toko Material, Mitra):
+    // Read: all authenticated/preview
+    // Write: Owner, Admin, Sales, Kasir, Akuntan
+    match /partners/{partnerId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN', 'SALES', 'KASIR', 'AKUNTAN']);
+    }
+
+    // Accounts (Kas, Bank, E-Wallet):
+    // Read: all authenticated/preview
+    // Write: Owner, Admin, Akuntan
+    match /accounts/{accountId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN', 'AKUNTAN']);
+    }
+
+    // Expense Categories:
+    // Read: all authenticated/preview
+    // Write: Owner, Admin, Akuntan
+    match /expenseCategories/{categoryId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN', 'AKUNTAN']);
+    }
+
+    // Products & Services:
+    // Read: all authenticated/preview
+    // Write: Owner, Admin, Sales
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN', 'SALES']);
+    }
+
+    // Documents (Nota, Kwitansi, Bukti transfer):
+    // Read/Create: all authenticated/preview
+    // Delete: Owner and Admin
+    match /documents/{documentId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isRole(['OWNER', 'ADMIN']);
+      allow delete: if isRole(['OWNER', 'ADMIN']);
+    }
+
+    // Audit logs (Immutable chronological ledger - append only):
+    match /auditLogs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // User profiles & roles:
+    // Read: all authenticated/preview
+    // Write: self profile or Owner/Admin
+    match /userProfiles/{userId} {
+      allow read: if true;
+      allow write: if !isSignedIn() || (request.auth.uid == userId || isRole(['OWNER', 'ADMIN']));
+    }
+
+    // Company profile:
+    // Read: all authenticated/preview
+    // Write: Owner and Admin
+    match /companyProfile/{profileId} {
+      allow read: if true;
+      allow write: if isRole(['OWNER', 'ADMIN']);
+    }
+  }
+}

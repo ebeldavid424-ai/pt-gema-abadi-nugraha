@@ -1,0 +1,205 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Atomic transaction record for financial operations across units",
+      "type": "object",
+      "properties": {
+        "trxNumber": { "type": "string", "maxLength": 64 },
+        "type": { "type": "string", "enum": ["SALE", "PURCHASE", "EXPENSE", "INCOME", "DEBT_PAYMENT", "RECEIVABLE_PAYMENT", "TRANSFER"] },
+        "date": { "type": "string", "maxLength": 32 },
+        "unitId": { "type": "string", "maxLength": 64 },
+        "partyName": { "type": "string", "maxLength": 128 },
+        "partyType": { "type": "string", "maxLength": 64 },
+        "itemName": { "type": "string", "maxLength": 256 },
+        "itemCategory": { "type": "string", "maxLength": 64 },
+        "qty": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["CASH", "TRANSFER", "CREDIT"] },
+        "accountId": { "type": "string", "maxLength": 64 },
+        "destinationAccountId": { "type": "string", "maxLength": 64 },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["ACTIVE", "CANCELLED"] },
+        "cancelReason": { "type": "string", "maxLength": 256 },
+        "referenceTrxId": { "type": "string", "maxLength": 64 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdByName": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["trxNumber", "type", "date", "unitId", "totalAmount", "status", "createdBy"]
+    },
+    "BusinessUnit": {
+      "title": "BusinessUnit",
+      "description": "Operating business unit of PT Gema Abadi Nugraha",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 32 },
+        "description": { "type": "string", "maxLength": 256 },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["name", "code", "isActive"]
+    },
+    "Partner": {
+      "title": "Partner",
+      "description": "Customers, suppliers, contractors, and other business partners",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "maxLength": 64 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 256 },
+        "status": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["name", "type", "status"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Cash and bank accounts for liquidity management",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["CASH", "BANK", "E_WALLET"] },
+        "accountNumber": { "type": "string", "maxLength": 64 },
+        "initialBalance": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "type", "isActive"]
+    },
+    "ExpenseCategory": {
+      "title": "ExpenseCategory",
+      "description": "Configurable operational expense categories",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "defaultUnitId": { "type": "string", "maxLength": 64 },
+        "description": { "type": "string", "maxLength": 256 },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "isActive"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Master items and services offered or purchased",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["BARANG", "JASA"] },
+        "unitId": { "type": "string", "maxLength": 64 },
+        "defaultPrice": { "type": "number" },
+        "unitOfMeasure": { "type": "string", "maxLength": 32 },
+        "stock": { "type": "number" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["name", "type", "isActive"]
+    },
+    "DocumentItem": {
+      "title": "DocumentItem",
+      "description": "Receipts, invoices, slips and files attached to transactions",
+      "type": "object",
+      "properties": {
+        "transactionId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 256 },
+        "mimeType": { "type": "string", "maxLength": 64 },
+        "size": { "type": "number" },
+        "storageType": { "type": "string", "maxLength": 32 },
+        "driveFileId": { "type": "string", "maxLength": 128 },
+        "dataUrl": { "type": "string", "maxLength": 200000 },
+        "notes": { "type": "string", "maxLength": 256 },
+        "uploadedBy": { "type": "string", "maxLength": 128 },
+        "uploadedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["name", "storageType", "uploadedBy", "uploadedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Historical audit trail of all financial and system events",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "maxLength": 64 },
+        "entity": { "type": "string", "maxLength": 64 },
+        "entityId": { "type": "string", "maxLength": 64 },
+        "performedBy": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["action", "entity", "performedBy", "timestamp"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile and role configuration",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["OWNER", "ADMIN", "AKUNTAN", "KASIR", "SALES", "OPERATOR"] },
+        "assignedUnitId": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["email", "role"]
+    },
+    "CompanyProfile": {
+      "title": "CompanyProfile",
+      "description": "Company identity for printouts, invoices, and receipts",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 128 },
+        "address": { "type": "string", "maxLength": 256 },
+        "phone": { "type": "string", "maxLength": 64 },
+        "email": { "type": "string", "maxLength": 128 },
+        "taxId": { "type": "string", "maxLength": 64 },
+        "receiptHeader": { "type": "string", "maxLength": 256 },
+        "receiptFooter": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Collection of all financial transaction entries"
+    },
+    "/businessUnits/{unitId}": {
+      "schema": "BusinessUnit",
+      "description": "Operating business units of the company"
+    },
+    "/partners/{partnerId}": {
+      "schema": "Partner",
+      "description": "Partners, vendors, and clients directory"
+    },
+    "/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "Cash drawers and bank accounts"
+    },
+    "/expenseCategories/{categoryId}": {
+      "schema": "ExpenseCategory",
+      "description": "Expense classification categories"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Master catalog of goods and services"
+    },
+    "/documents/{documentId}": {
+      "schema": "DocumentItem",
+      "description": "Attached documents, receipts, slips, and invoices"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Immutable activity audit log"
+    },
+    "/userProfiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles with role-based access"
+    },
+    "/companyProfile/{profileId}": {
+      "schema": "CompanyProfile",
+      "description": "Company identity details"
+    }
+  }
+}

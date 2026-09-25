@@ -1,0 +1,6 @@
+{
+  "name": "PT. Gema Abadi Nugraha - Sistem Keuangan",
+  "description": "Sistem Pengelolaan Keuangan Multi-Unit PT. Gema Abadi Nugraha (Bengkel, Konstruksi, Toko/Material) dengan Arsitektur Transaksi Terpadu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
